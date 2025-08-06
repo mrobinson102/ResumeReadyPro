@@ -6,7 +6,7 @@ import openai
 
 # Load environment variables
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 st.set_page_config(page_title="ResumeReadyPro", layout="wide")
 
@@ -58,7 +58,7 @@ def generate_summary(user_input):
 
     Summary:
     """
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
@@ -87,7 +87,7 @@ def generate_interview_questions(resume_text, category, num_questions):
 
     Questions:
     """
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
