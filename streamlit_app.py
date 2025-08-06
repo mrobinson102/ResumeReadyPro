@@ -7,6 +7,8 @@ import time
 from fpdf import FPDF
 from datetime import datetime
 import sqlite3
+from PIL import Image, UnidentifiedImageError
+import io
 
 # Load environment variables
 load_dotenv()
@@ -86,7 +88,13 @@ st.markdown("""
 st.title("📄 ResumeReadyPro: AI Resume Enhancer")
 
 # Sidebar Navigation
-st.sidebar.image("assets/logo.png", width=150)
+try:
+    logo_path = "assets/logo.png"
+    image = Image.open(logo_path)
+    st.sidebar.image(image, width=150)
+except (FileNotFoundError, UnidentifiedImageError):
+    st.sidebar.markdown("**ResumeReadyPro**")
+
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["Generate Summary", "Upload Resume", "Admin Dashboard", "About"])
 
