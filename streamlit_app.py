@@ -99,8 +99,23 @@ def generate_interview_questions(resume_text, category, num_questions):
             max_tokens=300
         )
         return response.choices[0].message.content.strip()
+
     except openai.RateLimitError:
-        return "⚠️ Rate limit exceeded. Please wait a moment and try again."
+        time.sleep(2)
+        try:
+            response = openai.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.6,
+                max_tokens=300
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            return f"⚠️ Rate limit exceeded again. Please try later.\n\nDetails: {str(e)}"
+
     except openai.OpenAIError as e:
         return f"⚠️ OpenAI API error: {str(e)}"
 
@@ -141,9 +156,13 @@ elif page == "Upload Resume":
         num_questions = st.slider("Number of Questions", min_value=3, max_value=10, value=5)
 
         if st.button("Generate Interview Questions"):
-            questions = generate_interview_questions(resume_text, category, num_questions)
-            st.success("Generated Interview Questions:")
-            st.write(questions)
+            with st.spinner("Generating interview questions..."):
+                questions = generate_interview_questions(resume_text, category, num_questions)
+            if questions.startswith("⚠️"):
+                st.warning(questions)
+            else:
+                st.success("Generated Interview Questions:")
+                st.write(questions)
 
 elif page == "About":
     st.subheader("About ResumeReadyPro")
