@@ -6,11 +6,29 @@ import openai
 import time
 from fpdf import FPDF
 from datetime import datetime
+import sqlite3
 
 # Load environment variables
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+# Initialize DB connection
+conn = sqlite3.connect("usage_logs.db")
+c = conn.cursor()
+c.execute('''CREATE TABLE IF NOT EXISTS usage (
+    timestamp TEXT,
+    name TEXT,
+    action TEXT
+)''')
+conn.commit()
+
+# Function to log usage
+def log_usage(name, action):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    c.execute("INSERT INTO usage (timestamp, name, action) VALUES (?, ?, ?)", (timestamp, name, action))
+    conn.commit()
+
+# Set up Streamlit
 st.set_page_config(page_title="ResumeReadyPro", layout="wide")
 
 # Apply custom CSS styles with branding, font, and enhancements
@@ -68,9 +86,9 @@ st.markdown("""
 st.title("📄 ResumeReadyPro: AI Resume Enhancer")
 
 # Sidebar Navigation
-st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Flat_tick_icon.svg/2048px-Flat_tick_icon.svg.png", width=40)
+st.sidebar.image("assets/logo.png", width=150)
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Generate Summary", "Upload Resume", "About"])
+page = st.sidebar.radio("Go to", ["Generate Summary", "Upload Resume", "Admin Dashboard", "About"])
 
 # Function to generate professional summary
 def generate_summary(user_input):
@@ -100,7 +118,7 @@ def extract_text_from_pdf(uploaded_file):
         text += page.extract_text() + "\n"
     return text
 
-# Function to generate interview questions with error handling
+# Function to generate interview questions
 def generate_interview_questions(resume_text, category, num_questions):
     prompt = f"""
     Review the following resume and generate {num_questions} {category.lower()} interview questions:
@@ -122,26 +140,10 @@ def generate_interview_questions(resume_text, category, num_questions):
         )
         return response.choices[0].message.content.strip()
 
-    except openai.RateLimitError:
-        time.sleep(2)
-        try:
-            response = openai.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.6,
-                max_tokens=300
-            )
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            return f"⚠️ Rate limit exceeded again. Please try later.\n\nDetails: {str(e)}"
+    except Exception as e:
+        return f"⚠️ Error: {str(e)}"
 
-    except openai.OpenAIError as e:
-        return f"⚠️ OpenAI API error: {str(e)}"
-
-# Utility to export to PDF with header and date
+# Export to PDF
 def export_to_pdf(text, filename="resume_summary.pdf"):
     pdf = FPDF()
     pdf.add_page()
@@ -154,7 +156,6 @@ def export_to_pdf(text, filename="resume_summary.pdf"):
         pdf.multi_cell(0, 10, line)
     return pdf.output(dest="S").encode("latin-1")
 
-# Pages
 if page == "Generate Summary":
     st.subheader("✍️ Generate a Resume Summary")
     name = st.text_input("Your Full Name")
@@ -168,6 +169,7 @@ if page == "Generate Summary":
             summary = generate_summary(user_input)
             st.success("Here’s your professional summary:")
             st.write(summary)
+            log_usage(name, "Generated Summary")
 
             st.download_button(
                 label="📥 Download Summary as .txt",
@@ -206,6 +208,16 @@ elif page == "Upload Resume":
             else:
                 st.success("Generated Interview Questions:")
                 st.write(questions)
+            log_usage("Resume Upload", "Generated Questions")
+
+elif page == "Admin Dashboard":
+    st.subheader("📊 Admin Usage Dashboard")
+    rows = c.execute("SELECT * FROM usage ORDER BY timestamp DESC LIMIT 100").fetchall()
+    if rows:
+        for row in rows:
+            st.write(f"[{row[0]}] {row[1]} - {row[2]}")
+    else:
+        st.info("No usage data yet.")
 
 elif page == "About":
     st.subheader("About ResumeReadyPro")
@@ -216,6 +228,7 @@ elif page == "About":
     - Extract resume content from PDFs
     - Generate interview questions for practice
     - Export summaries as TXT or PDF
+    - Track usage and view logs in Admin Dashboard
     - Enjoy polished layout, branding, and streamlined experience
 
     Built with ❤️ using Streamlit and OpenAI.
