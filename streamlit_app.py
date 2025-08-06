@@ -29,6 +29,29 @@ authenticator = stauth.Authenticate(
     'resume_app', 'abcdef', cookie_expiry_days=30
 )
 
+# Custom login UI
+st.markdown("""
+    <style>
+        .login-container {
+            text-align: center;
+            padding: 2rem;
+        }
+        .login-header {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        .login-sub {
+            color: #555;
+            margin-bottom: 2rem;
+        }
+    </style>
+    <div class="login-container">
+        <div class="login-header">🔐 ResumeReadyPro Admin Login</div>
+        <div class="login-sub">Please log in to access resume tools and analytics dashboard.</div>
+    </div>
+""", unsafe_allow_html=True)
+
 name, authentication_status, username = authenticator.login("Login", "main")
 
 if authentication_status:
