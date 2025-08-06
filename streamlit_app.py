@@ -5,6 +5,7 @@ from PyPDF2 import PdfReader
 import openai
 import time
 from fpdf import FPDF
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -140,11 +141,15 @@ def generate_interview_questions(resume_text, category, num_questions):
     except openai.OpenAIError as e:
         return f"⚠️ OpenAI API error: {str(e)}"
 
-# Utility to export to PDF
+# Utility to export to PDF with header and date
 def export_to_pdf(text, filename="resume_summary.pdf"):
     pdf = FPDF()
     pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "ResumeReadyPro - Professional Summary", ln=True, align="C")
     pdf.set_font("Arial", size=12)
+    pdf.cell(0, 10, f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
+    pdf.ln(10)
     for line in text.splitlines():
         pdf.multi_cell(0, 10, line)
     return pdf.output(dest="S").encode("latin-1")
@@ -211,6 +216,7 @@ elif page == "About":
     - Extract resume content from PDFs
     - Generate interview questions for practice
     - Export summaries as TXT or PDF
+    - Enjoy polished layout, branding, and streamlined experience
 
     Built with ❤️ using Streamlit and OpenAI.
     """)
