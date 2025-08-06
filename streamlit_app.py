@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 from PyPDF2 import PdfReader
 import openai
+import time
 
 # Load environment variables
 load_dotenv()
@@ -77,7 +78,7 @@ def extract_text_from_pdf(uploaded_file):
         text += page.extract_text() + "\n"
     return text
 
-# Function to generate interview questions with options
+# Function to generate interview questions with error handling
 def generate_interview_questions(resume_text, category, num_questions):
     prompt = f"""
     Review the following resume and generate {num_questions} {category.lower()} interview questions:
@@ -87,16 +88,21 @@ def generate_interview_questions(resume_text, category, num_questions):
 
     Questions:
     """
-    response = openai.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.6,
-        max_tokens=300
-    )
-    return response.choices[0].message.content.strip()
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.6,
+            max_tokens=300
+        )
+        return response.choices[0].message.content.strip()
+    except openai.RateLimitError:
+        return "⚠️ Rate limit exceeded. Please wait a moment and try again."
+    except openai.OpenAIError as e:
+        return f"⚠️ OpenAI API error: {str(e)}"
 
 # Pages
 if page == "Generate Summary":
