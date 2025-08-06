@@ -59,80 +59,95 @@ if authentication_status:
     authenticator.logout("Logout", "sidebar")
     st.sidebar.title(f"Welcome {name}")
 
-    st.title("📄 ResumeReadyPro")
-    st.subheader("Build standout resumes and generate interview questions with AI")
+    # Navigation
+    page = st.sidebar.radio("Go to", ["Generate Summary", "Upload Resume", "Admin Dashboard", "About"])
+
+    st.title("📄 ResumeReadyPro: AI Resume Enhancer")
     st.markdown("---")
 
-    uploaded_file = st.file_uploader("📤 Upload Your Resume (PDF only)", type=["pdf"])
+    if page == "Generate Summary":
+        st.header("✍️ Generate a Resume Summary")
+        full_name = st.text_input("Your Full Name")
+        job_title = st.text_input("Job Title / Career Goal")
+        experience = st.text_area("Work Experience Summary")
+        skills = st.text_area("Skills / Tools / Technologies")
 
-    extracted_text = ""
-    if uploaded_file is not None:
-        reader = PdfReader(uploaded_file)
-        for page in reader.pages:
-            extracted_text += page.extract_text() or ""
+        if st.button("Generate Summary"):
+            if full_name and job_title and experience and skills:
+                with st.spinner("Generating your summary..."):
+                    try:
+                        summary_response = openai.ChatCompletion.create(
+                            model="gpt-3.5-turbo",
+                            messages=[
+                                {"role": "user", "content": f"Write a professional resume summary for:\nName: {full_name}\nJob Title: {job_title}\nExperience: {experience}\nSkills: {skills}"}
+                            ]
+                        )
+                        summary_text = summary_response.choices[0].message.content.strip()
+                        st.success("✅ Summary Generated!")
+                        st.markdown("### Preview")
+                        st.info(summary_text)
 
-    if extracted_text:
-        st.markdown("### Extracted Resume Text")
-        st.text_area("Resume Content", extracted_text, height=200)
+                        txt_bytes = BytesIO(summary_text.encode("utf-8"))
+                        st.download_button("⬇️ Download as TXT", data=txt_bytes, file_name="resume_summary.txt", mime="text/plain")
 
-        if st.button("🧠 Generate Interview Questions"):
-            with st.spinner("Generating questions..."):
-                try:
-                    response = openai.ChatCompletion.create(
-                        model="gpt-3.5-turbo",
-                        messages=[
-                            {"role": "user", "content": f"Generate 5 interview questions based on this resume:\n{extracted_text}"}
-                        ]
-                    )
-                    questions = response.choices[0].message.content.strip()
-                    st.success("Questions generated!")
-                    st.markdown("### 🤖 AI-Generated Interview Questions")
-                    st.write(questions)
-                except Exception as e:
-                    st.error(f"Error: {e}")
+                        pdf = FPDF()
+                        pdf.add_page()
+                        pdf.set_font("Arial", size=12)
+                        for line in summary_text.split("\n"):
+                            pdf.multi_cell(0, 10, line)
+                        pdf_output = BytesIO()
+                        pdf.output(pdf_output)
+                        pdf_output.seek(0)
+                        st.download_button("⬇️ Download as PDF", data=pdf_output, file_name="resume_summary.pdf", mime="application/pdf")
 
-    st.markdown("---")
-    st.markdown("### ✨ Create Resume from Summary")
-    full_name = st.text_input("Full Name")
-    email = st.text_input("Email")
-    summary_input = st.text_area("Enter your achievements or experience")
+                    except Exception as e:
+                        st.error(f"Failed to generate summary: {e}")
+            else:
+                st.warning("Please fill in all fields to generate your summary.")
 
-    if st.button("✨ Generate Resume Summary"):
-        if full_name and email and summary_input:
-            with st.spinner("Generating summary..."):
-                try:
-                    summary_response = openai.ChatCompletion.create(
-                        model="gpt-3.5-turbo",
-                        messages=[
-                            {"role": "user", "content": f"Write a 3-4 sentence resume summary for this content:\n{summary_input}"}
-                        ]
-                    )
-                    generated_summary = summary_response.choices[0].message.content.strip()
-                    st.session_state.generated_summary = generated_summary
-                    st.success("Summary created!")
-                    st.markdown("### 📝 Summary Preview")
-                    st.info(generated_summary)
-                except Exception as e:
-                    st.error(f"Failed to generate summary: {e}")
-        else:
-            st.warning("Please complete all fields.")
+    elif page == "Upload Resume":
+        st.header("📤 Upload Resume")
+        uploaded_file = st.file_uploader("Upload your resume (PDF only)", type=["pdf"])
 
-    if "generated_summary" in st.session_state:
-        summary_text = f"""{full_name}\n{email}\n\nProfessional Summary:\n{st.session_state.generated_summary}"""
+        if uploaded_file is not None:
+            reader = PdfReader(uploaded_file)
+            resume_text = ""
+            for page in reader.pages:
+                resume_text += page.extract_text() or ""
 
-        txt_bytes = BytesIO(summary_text.encode("utf-8"))
-        st.download_button("⬇️ Download as TXT", data=txt_bytes, file_name="resume.txt", mime="text/plain")
+            st.markdown("### Extracted Resume Text")
+            st.text_area("Resume Content", resume_text, height=200)
 
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        for line in summary_text.split("\n"):
-            pdf.multi_cell(0, 10, line)
-        pdf_output = BytesIO()
-        pdf.output(pdf_output)
-        pdf_output.seek(0)
+            st.markdown("### Customize Your Questions")
+            question_type = st.selectbox("Question Type", ["Behavioral", "Technical", "Situational"])
+            question_count = st.slider("Number of Questions", 1, 10, 5)
 
-        st.download_button("⬇️ Download as PDF", data=pdf_output, file_name="resume.pdf", mime="application/pdf")
+            if st.button("Generate Interview Questions"):
+                with st.spinner("Generating questions..."):
+                    try:
+                        question_prompt = f"Generate {question_count} {question_type.lower()} interview questions based on the following resume:\n{resume_text}"
+                        question_response = openai.ChatCompletion.create(
+                            model="gpt-3.5-turbo",
+                            messages=[{"role": "user", "content": question_prompt}]
+                        )
+                        questions = question_response.choices[0].message.content.strip()
+                        st.success("✅ Questions Generated!")
+                        st.markdown("### 🤖 AI-Generated Interview Questions")
+                        st.write(questions)
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+
+    elif page == "Admin Dashboard":
+        st.header("📊 Admin Dashboard")
+        st.write("Coming soon: user analytics, resume stats, usage insights...")
+
+    elif page == "About":
+        st.header("ℹ️ About ResumeReadyPro")
+        st.markdown("""
+        ResumeReadyPro is an AI-powered tool designed to help professionals generate strong resume summaries and prepare for interviews with tailored questions — all from their existing resume content.
+        
+        Built using Streamlit, OpenAI, and PDF parsing tools.
+        """)
 
 elif authentication_status is False:
     st.error("Username or password is incorrect")
