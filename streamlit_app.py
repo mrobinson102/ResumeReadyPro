@@ -54,6 +54,12 @@ st.markdown("""
         .css-1aumxhk {
             font-weight: 600;
         }
+        .stSlider .css-1aumxhk {
+            color: #002B5B;
+        }
+        .stSpinner>div>div {
+            color: #002B5B !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
