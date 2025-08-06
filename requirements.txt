@@ -1,7 +1,9 @@
 streamlit
-openai
+streamlit-authenticator
+fpdf
 PyPDF2
 python-dotenv
-fpdf
-streamlit-authenticator
+openai
+Pillow
+bcrypt
 
