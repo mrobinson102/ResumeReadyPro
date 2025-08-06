@@ -9,6 +9,40 @@ load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 st.set_page_config(page_title="ResumeReadyPro", layout="wide")
+
+# Apply custom CSS styles
+st.markdown("""
+    <style>
+        .stApp {
+            background-color: #f4f4f4;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .css-1d391kg, .css-1v0mbdj, .css-18e3th9 {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        .st-bb, .st-c9, .st-c8, .st-b3 {
+            color: #333;
+        }
+        h1, h2, h3, h4 {
+            color: #002B5B;
+        }
+        .stButton>button {
+            background-color: #002B5B;
+            color: white;
+            border-radius: 5px;
+            padding: 0.5em 1.5em;
+            font-weight: bold;
+        }
+        .stButton>button:hover {
+            background-color: #004080;
+            color: white;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 st.title("📄 ResumeReadyPro: AI Resume Enhancer")
 
 # Sidebar Navigation
