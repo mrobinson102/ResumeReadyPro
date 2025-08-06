@@ -230,6 +230,7 @@ elif page == "About":
     - Export summaries as TXT or PDF
     - Track usage and view logs in Admin Dashboard
     - Enjoy polished layout, branding, and streamlined experience
+    - Secure user authentication and admin-only access
 
     Built with ❤️ using Streamlit and OpenAI.
     """)
