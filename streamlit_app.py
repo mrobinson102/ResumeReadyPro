@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from PyPDF2 import PdfReader
 import openai
 import time
+from fpdf import FPDF
 
 # Load environment variables
 load_dotenv()
@@ -139,6 +140,15 @@ def generate_interview_questions(resume_text, category, num_questions):
     except openai.OpenAIError as e:
         return f"⚠️ OpenAI API error: {str(e)}"
 
+# Utility to export to PDF
+def export_to_pdf(text, filename="resume_summary.pdf"):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    for line in text.splitlines():
+        pdf.multi_cell(0, 10, line)
+    return pdf.output(dest="S").encode("latin-1")
+
 # Pages
 if page == "Generate Summary":
     st.subheader("✍️ Generate a Resume Summary")
@@ -159,6 +169,14 @@ if page == "Generate Summary":
                 data=summary,
                 file_name="resume_summary.txt",
                 mime="text/plain"
+            )
+
+            pdf_data = export_to_pdf(summary)
+            st.download_button(
+                label="📄 Download Summary as PDF",
+                data=pdf_data,
+                file_name="resume_summary.pdf",
+                mime="application/pdf"
             )
         else:
             st.error("Please fill out at least Name, Role, and Experience fields.")
@@ -192,6 +210,7 @@ elif page == "About":
     - Write professional summaries based on your experience
     - Extract resume content from PDFs
     - Generate interview questions for practice
+    - Export summaries as TXT or PDF
 
     Built with ❤️ using Streamlit and OpenAI.
     """)
