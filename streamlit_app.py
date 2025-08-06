@@ -11,35 +11,48 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 st.set_page_config(page_title="ResumeReadyPro", layout="wide")
 
-# Apply custom CSS styles
+# Apply custom CSS styles with branding, font, and enhancements
 st.markdown("""
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
         .stApp {
-            background-color: #f4f4f4;
-            font-family: 'Segoe UI', sans-serif;
+            background-color: #f2f6fc;
+            font-family: 'Inter', sans-serif;
         }
         .css-1d391kg, .css-1v0mbdj, .css-18e3th9 {
             background-color: white;
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 20px;
-            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
         }
-        .st-bb, .st-c9, .st-c8, .st-b3 {
-            color: #333;
-        }
-        h1, h2, h3, h4 {
+        h1, h2, h3, h4, h5 {
             color: #002B5B;
+            font-weight: 700;
         }
         .stButton>button {
             background-color: #002B5B;
             color: white;
-            border-radius: 5px;
+            border-radius: 6px;
             padding: 0.5em 1.5em;
             font-weight: bold;
+            transition: background-color 0.3s ease;
         }
         .stButton>button:hover {
             background-color: #004080;
-            color: white;
+        }
+        .stTextArea>div>textarea {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .stSelectbox>div>div>div {
+            font-size: 0.9em;
+        }
+        .css-1aumxhk {
+            font-weight: 600;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -47,6 +60,7 @@ st.markdown("""
 st.title("📄 ResumeReadyPro: AI Resume Enhancer")
 
 # Sidebar Navigation
+st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Flat_tick_icon.svg/2048px-Flat_tick_icon.svg.png", width=40)
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["Generate Summary", "Upload Resume", "About"])
 
