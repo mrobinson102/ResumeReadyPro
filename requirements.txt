@@ -1,9 +1,11 @@
 streamlit
-streamlit-authenticator
+streamlit-authenticator==0.2.2
+bcrypt
+PyYAML
 fpdf
 PyPDF2
 python-dotenv
 openai
 Pillow
-bcrypt
+
 
