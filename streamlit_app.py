@@ -77,6 +77,27 @@ def extract_text_from_pdf(uploaded_file):
         text += page.extract_text() + "\n"
     return text
 
+# Function to generate interview questions with options
+def generate_interview_questions(resume_text, category, num_questions):
+    prompt = f"""
+    Review the following resume and generate {num_questions} {category.lower()} interview questions:
+
+    Resume:
+    {resume_text}
+
+    Questions:
+    """
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.6,
+        max_tokens=300
+    )
+    return response.choices[0].message.content.strip()
+
 # Pages
 if page == "Generate Summary":
     st.subheader("✍️ Generate a Resume Summary")
@@ -109,24 +130,12 @@ elif page == "Upload Resume":
         resume_text = extract_text_from_pdf(uploaded_file)
         st.text_area("Extracted Resume Text", resume_text, height=300)
 
+        st.markdown("### Customize Your Questions")
+        category = st.selectbox("Question Type", ["Behavioral", "Technical", "General"])
+        num_questions = st.slider("Number of Questions", min_value=3, max_value=10, value=5)
+
         if st.button("Generate Interview Questions"):
-            prompt = f"""
-            Review the following resume content and generate 5 targeted interview questions that assess readiness and fit for technical roles:
-
-            {resume_text}
-
-            Questions:
-            """
-            response = openai.ChatCompletion.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.6,
-                max_tokens=300
-            )
-            questions = response.choices[0].message.content.strip()
+            questions = generate_interview_questions(resume_text, category, num_questions)
             st.success("Generated Interview Questions:")
             st.write(questions)
 
