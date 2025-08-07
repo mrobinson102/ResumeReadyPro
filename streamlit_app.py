@@ -17,7 +17,7 @@ from datetime import datetime
 
 # Load environment variables
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = openai.OpenAI()
 
 # Paths
 USERS_DB = "user_data.json"
@@ -98,9 +98,9 @@ name, authentication_status, username = authenticator.login("Login", "main")
 if authentication_status:
     authenticator.logout("Logout", "sidebar")
     st.sidebar.image("https://i.imgur.com/m0E0FLO.png", width=150)
-    st.sidebar.markdown("<h3 style='color:#2d3436;'>Welcome Admin User</h3>", unsafe_allow_html=True)
+    st.sidebar.markdown(f"<h3 style='color:#2d3436;'>Welcome {username}</h3>", unsafe_allow_html=True)
 
-    page = st.sidebar.radio("Go to", ["Generate Summary", "Upload Resume", "Admin Dashboard", "About"])
+    page = st.sidebar.radio("Go to", ["Generate Summary", "Upload Resume", "Admin Dashboard", "Register User", "About"])
     st.title("📄 ResumeReadyPro: AI Resume Enhancer")
     st.markdown("---")
 
@@ -118,7 +118,7 @@ if authentication_status:
             if full_name and job_title and experience and skills:
                 with st.spinner("Generating your summary..."):
                     try:
-                        summary_response = openai.ChatCompletion.create(
+                        summary_response = client.chat.completions.create(
                             model="gpt-3.5-turbo",
                             messages=[
                                 {"role": "user", "content": f"Write a professional resume summary for:\nName: {full_name}\nJob Title: {job_title}\nExperience: {experience}\nSkills: {skills}"}
@@ -170,7 +170,7 @@ if authentication_status:
                 with st.spinner("Generating questions..."):
                     try:
                         question_prompt = f"Generate {question_count} {question_type.lower()} interview questions based on the following resume:\n{resume_text}"
-                        question_response = openai.ChatCompletion.create(
+                        question_response = client.chat.completions.create(
                             model="gpt-3.5-turbo",
                             messages=[{"role": "user", "content": question_prompt}]
                         )
@@ -187,7 +187,7 @@ if authentication_status:
             st.markdown("### 📊 Resume Insights")
             try:
                 insights_prompt = f"Extract top 10 skills, certifications, job titles, and industries from this resume:\n{resume_text}"
-                insights_response = openai.ChatCompletion.create(
+                insights_response = client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[{"role": "user", "content": insights_prompt}]
                 )
@@ -195,7 +195,7 @@ if authentication_status:
                 st.info(insights_text)
 
                 st.download_button("⬇️ Export Insights as JSON", data=json.dumps(insights_text), file_name="resume_insights.json")
-                st.download_button("⬇️ Export Insights as CSV", data=insights_text, file_name="resume_insights.csv")
+                st.download_button("⬇️ Export Insights as TXT", data=insights_text, file_name="resume_insights.txt")
 
                 user_data[username]["resumes"] += 1
                 save_users(user_data)
@@ -227,6 +227,41 @@ if authentication_status:
         ax.set_ylabel("Count")
         ax.set_title("ResumeReadyPro Usage Metrics")
         st.pyplot(fig)
+
+        if st.button("Download User Stats CSV"):
+            st.download_button("⬇️ Export CSV", data=usage_df.to_csv(index=False), file_name="user_stats.csv")
+
+        st.markdown("### Admin Tools")
+        selected_user = st.selectbox("Select user to delete or reset", list(user_data.keys()))
+        if st.button("Delete User"):
+            user_data.pop(selected_user, None)
+            save_users(user_data)
+            st.success(f"Deleted user {selected_user}")
+        if st.button("Reset Stats"):
+            user_data[selected_user] = {"summaries": 0, "resumes": 0, "questions": 0}
+            save_users(user_data)
+            st.success(f"Stats reset for {selected_user}")
+
+    elif page == "Register User":
+        st.header("👤 Register New User")
+        new_username = st.text_input("New Username")
+        new_password = st.text_input("New Password", type="password")
+        if st.button("Create User"):
+            if new_username and new_password:
+                users = load_users()
+                if new_username in users:
+                    st.error("Username already exists")
+                else:
+                    hashed_pw = stauth.Hasher([new_password]).generate()[0]
+                    credentials['usernames'][new_username] = {
+                        'name': new_username,
+                        'password': hashed_pw
+                    }
+                    users[new_username] = {"summaries": 0, "resumes": 0, "questions": 0}
+                    save_users(users)
+                    st.success(f"User {new_username} registered successfully")
+            else:
+                st.warning("Please enter both username and password")
 
     elif page == "About":
         st.header("ℹ️ About ResumeReadyPro")
