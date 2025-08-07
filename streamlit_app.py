@@ -11,8 +11,8 @@ import yaml
 from yaml.loader import SafeLoader
 from dotenv import load_dotenv
 import matplotlib
-matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt 
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 # Load environment variables
 load_dotenv()
