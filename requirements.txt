@@ -7,5 +7,6 @@ PyPDF2
 python-dotenv
 openai
 Pillow
-
-
+matplotlib
+PyYAML
+streamlit-authenticator
