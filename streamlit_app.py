@@ -105,7 +105,7 @@ if auth_status:
     # Debugging prints (remove in production)
     print(f"Type of 'user_data' before check: {type(user_data)}")
     print(f"Value of 'user_data' before check: {user_data}")
-    if username not in user_data
+    if username not in user_data:
         # Indented code block
         print("User not found.")
         user_data[username] = {"summaries": 0, "resumes": 0, "questions": 0}
