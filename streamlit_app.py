@@ -35,27 +35,34 @@ def save_users(data):
     with open(USERS_DB, "w") as f:
         json.dump(data, f, indent=4)
 
-# Authentication Setup
-hashed_passwords = stauth.Hasher(['adminpass']).generate()
-credentials = {
-    'usernames': {
-        'admin': {
-            'name': 'Admin User',
-            'password': hashed_passwords[0]
-        }
-    }
-}
+# Load Users
+user_data = load_users()
 
+# Create credentials for streamlit_authenticator
+user_credentials = {'usernames': {}}
+for uname, uinfo in user_data.items():
+    if "password" in uinfo:
+        user_credentials['usernames'][uname] = {
+            'name': uinfo.get('name', uname),
+            'password': stauth.Hasher([uinfo['password']]).generate()[0]
+        }
+
+# Add admin user
+admin_user = 'admin'
+if admin_user not in user_credentials['usernames']:
+    user_credentials['usernames'][admin_user] = {
+        'name': 'Admin User',
+        'password': stauth.Hasher(['adminpass']).generate()[0]
+    }
+
+# Authentication Setup
 authenticator = stauth.Authenticate(
-    credentials,
+    user_credentials,
     'resume_app', 'abcdef', cookie_expiry_days=30
 )
 
 # App Configuration
 st.set_page_config(page_title="ResumeReadyPro", page_icon="📄", layout="wide")
-
-# Load Users
-user_data = load_users()
 
 # Styling
 st.markdown("""
@@ -177,7 +184,13 @@ if auth_status:
     elif page == "About":
         st.markdown("""
             ### About ResumeReadyPro
-            A powerful tool to generate summaries, interview questions, and insights from resumes using AI.
+            ResumeReadyPro is a personalized AI assistant designed to help professionals and job seekers:
+            - Generate polished resume summaries
+            - Upload resumes and get interview questions
+            - Track usage and progress via the admin dashboard
+            - Register and manage user profiles
+
+            > If you forgot your username or password, please contact support@example.com
         """)
 
 elif auth_status is False:
