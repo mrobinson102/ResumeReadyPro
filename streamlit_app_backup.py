@@ -19,65 +19,6 @@ from datetime import datetime
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Prompt templates
-prompt_templates = {
-    "Internship Section": """
-Generate a résumé section titled 'Internship & Co-op Experience'. Use the following input to format each role clearly with company name, role, dates, and bullet points for responsibilities and accomplishments. Highlight technologies used and any metrics if mentioned.
-
-Input:
-{user_input}
-
-Format output in markdown or plain text suitable for a professional resume.
-""",
-    "Categorized Projects": """
-You are helping a user build a résumé. Categorize the following projects into three sections:
-
-1. Internship Projects
-2. Academic Coursework Projects
-3. Personal Side Projects
-
-For each project, include:
-- Project title
-- Role or responsibility
-- Technologies used (languages, frameworks)
-- Key accomplishment or what was built
-
-Input:
-{user_input}
-
-Return output in resume bullet style under each category.
-""",
-    "GitHub Repo Summary": """
-For each of the following GitHub repositories, generate a résumé-ready bullet point that describes:
-- What the project does
-- Technologies used
-- A notable feature or result
-- Keep each bullet under 30 words
-
-GitHub Repo List:
-{user_input}
-
-Output each bullet with a hyperlink to the repo.
-""",
-    "Resume Only": """
-You are an AI résumé assistant. The user does not want a cover letter. Only generate a professional résumé using the following inputs:
-- Experience
-- Skills
-- Education
-- Projects
-
-Format the résumé cleanly with appropriate headings and bullet points, omitting any cover letter language.
-""",
-    "Tech Summary for Big Tech": """
-Write a compelling 2–3 sentence professional summary for a résumé targeting top tech companies (e.g., Microsoft, Amazon). The tone should be confident, clear, and metrics-driven.
-
-Use the input below. Highlight relevant languages, platforms, and impact.
-
-Input:
-{user_input}
-"""
-}
-
 # Paths
 USERS_DB = "user_data.json"
 
@@ -170,39 +111,89 @@ if auth_status:
         user_data[username] = {"summaries": 0, "resumes": 0, "questions": 0}
 
     if page == "Generate Summary":
-        st.subheader("✍️ Resume Summary or Advanced Generator")
+        st.subheader("✍️ Generate a Resume Summary")
+        full_name = st.text_input("Your Full Name")
+        career_goal = st.text_input("Job Title / Career Goal")
+        experience = st.text_area("Work Experience Summary")
+        skills = st.text_area("Skills / Tools / Technologies")
 
-        advanced = st.checkbox("Use Advanced Prompt Templates")
-        if advanced:
-            selected_prompt = st.selectbox("Choose Template", list(prompt_templates.keys()))
-            user_input = st.text_area("Enter Input for Template", height=200)
+        if st.button("Generate Summary"):
+            prompt = f"Generate a professional resume summary for {full_name} targeting the role of {career_goal}. " \
+                     f"Include experience: {experience}. Skills: {skills}."
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": prompt}]
+            )
+            result = response.choices[0].message.content
+            st.success("Summary Generated!")
+            st.text_area("Generated Summary", result, height=200)
+            user_data[username]["summaries"] += 1
+            save_users(user_data)
 
-            if st.button("Generate Using Template"):
-                filled_prompt = prompt_templates[selected_prompt].format(user_input=user_input)
-                response = openai.ChatCompletion.create(
-                    model="gpt-4",
-                    messages=[{"role": "user", "content": filled_prompt}],
-                    temperature=0.7
-                )
-                st.text_area("Generated Output", response.choices[0].message.content, height=250)
-                user_data[username]["summaries"] += 1
-                save_users(user_data)
-        else:
-            full_name = st.text_input("Your Full Name")
-            career_goal = st.text_input("Job Title / Career Goal")
-            experience = st.text_area("Work Experience Summary")
-            skills = st.text_area("Skills / Tools / Technologies")
+    elif page == "Upload Resume":
+        st.subheader("📤 Upload Resume and Generate Interview Questions")
+        uploaded = st.file_uploader("Upload PDF Resume", type=["pdf"])
 
-            if st.button("Generate Summary"):
-                prompt = f"Generate a professional resume summary for {full_name} targeting the role of {career_goal}. "                          f"Include experience: {experience}. Skills: {skills}."
+        if uploaded:
+            reader = PdfReader(uploaded)
+            text = "\n".join([page.extract_text() for page in reader.pages])
+            st.text_area("Extracted Resume Text", text, height=200)
+
+            qtype = st.selectbox("Question Type", ["Behavioral", "Technical", "Mixed"])
+            qcount = st.slider("Number of Questions", 1, 10, 5)
+
+            if st.button("Generate Interview Questions"):
+                prompt = f"Generate {qcount} {qtype} interview questions from this resume:\n{text}"
                 response = openai.ChatCompletion.create(
                     model="gpt-4",
                     messages=[{"role": "user", "content": prompt}]
                 )
-                result = response.choices[0].message.content
-                st.success("Summary Generated!")
-                st.text_area("Generated Summary", result, height=200)
-                user_data[username]["summaries"] += 1
+                st.write(response.choices[0].message.content)
+                user_data[username]["resumes"] += 1
+                user_data[username]["questions"] += qcount
                 save_users(user_data)
 
-# The remaining routes (Upload Resume, Admin Dashboard, Register User, About) would follow...
+    elif page == "Admin Dashboard":
+        st.subheader("📊 Admin Dashboard")
+        df = pd.DataFrame.from_dict(user_data, orient='index')
+        st.dataframe(df)
+
+        fig, ax = plt.subplots()
+        df[["summaries", "resumes", "questions"]].sum().plot(kind='bar', ax=ax)
+        ax.set_title("ResumeReadyPro Usage Metrics")
+        st.pyplot(fig)
+
+        format_opt = st.selectbox("Export Format", ["CSV", "JSON"])
+        if st.button("Download Export"):
+            if format_opt == "CSV":
+                st.download_button("Download CSV", df.to_csv().encode('utf-8'), "user_data.csv")
+            else:
+                st.download_button("Download JSON", json.dumps(user_data, indent=4), "user_data.json")
+
+    elif page == "Register User":
+        st.subheader("Register New User")
+        new_user = st.text_input("Username")
+        new_name = st.text_input("Full Name")
+        new_pass = st.text_input("Password", type="password")
+        if st.button("Register"):
+            if new_user and new_pass:
+                user_data[new_user] = {"name": new_name, "password": new_pass, "summaries": 0, "resumes": 0, "questions": 0}
+                save_users(user_data)
+                st.success("User registered!")
+
+    elif page == "About":
+        st.markdown("""
+            ### About ResumeReadyPro
+            ResumeReadyPro is a personalized AI assistant designed to help professionals and job seekers:
+            - Generate polished resume summaries
+            - Upload resumes and get interview questions
+            - Track usage and progress via the admin dashboard
+            - Register and manage user profiles
+
+            > If you forgot your username or password, please contact support@example.com
+        """)
+
+elif auth_status is False:
+    st.error("Username or password is incorrect")
+elif auth_status is None:
+    st.warning("Please enter your username and password")
