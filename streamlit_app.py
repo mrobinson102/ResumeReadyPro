@@ -110,7 +110,7 @@ if auth_status:
     if username not in user_data:
         user_data[username] = {"summaries": 0, "resumes": 0, "questions": 0}
 
-    elif page == "Generate Summary":
+elif page == "Generate Summary":
         st.subheader("  Resume Summary or Advanced Generator")
 
     advanced = st.checkbox("Use Advanced Prompt Templates")
