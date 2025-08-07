@@ -9,4 +9,5 @@ openai==1.55.3
 Pillow
 matplotlib
 PyYAML
+httpx==0.27.2
 
