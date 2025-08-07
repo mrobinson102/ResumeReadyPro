@@ -100,7 +100,9 @@ if authentication_status:
     st.sidebar.image("https://i.imgur.com/m0E0FLO.png", width=150)
     st.sidebar.markdown(f"<h3 style='color:#2d3436;'>Welcome {username}</h3>", unsafe_allow_html=True)
 
-    page = st.sidebar.radio("Go to", ["Generate Summary", "Upload Resume", "Admin Dashboard", "Register User", "About"])
+    page = st.sidebar.radio("Go to", [
+        "Generate Summary", "Upload Resume", "Admin Dashboard", "Register User", "About"
+    ])
     st.title("📄 ResumeReadyPro: AI Resume Enhancer")
     st.markdown("---")
 
@@ -178,6 +180,20 @@ if authentication_status:
                         st.success("✅ Questions Generated!")
                         st.markdown("### 🤖 AI-Generated Interview Questions")
                         st.write(questions)
+
+                        txt_bytes = BytesIO(questions.encode("utf-8"))
+                        st.download_button("⬇️ Download Questions as TXT", data=txt_bytes, file_name="interview_questions.txt", mime="text/plain")
+
+                        pdf = FPDF()
+                        pdf.add_page()
+                        pdf.set_font("Arial", size=12)
+                        for line in questions.split("\n"):
+                            pdf.multi_cell(0, 10, line)
+                        pdf_output = BytesIO()
+                        pdf.output(pdf_output)
+                        pdf_output.seek(0)
+                        st.download_button("⬇️ Download Questions as PDF", data=pdf_output, file_name="interview_questions.pdf", mime="application/pdf")
+
                         user_data[username]["questions"] += question_count
                         save_users(user_data)
                     except Exception as e:
