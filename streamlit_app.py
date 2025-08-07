@@ -1,5 +1,5 @@
 import streamlit as st
-import openai
+import openai ==1.12.0
 import os
 from io import BytesIO
 from fpdf import FPDF
