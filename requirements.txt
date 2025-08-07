@@ -5,7 +5,7 @@ PyYAML
 fpdf
 PyPDF2
 python-dotenv
-openai==1.12.0
+openai==1.55.3
 Pillow
 matplotlib
 PyYAML
