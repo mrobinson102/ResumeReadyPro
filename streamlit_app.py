@@ -14,15 +14,19 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from datetime import datetime
+
 # Load environment variables
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
 # Paths
 USERS_DB = "user_data.json"
+
 # Initialize or load user data
 if not os.path.exists(USERS_DB):
     with open(USERS_DB, "w") as f:
         json.dump({}, f)
+
 def load_users():
     try:
         with open(USERS_DB, "r") as f:
@@ -33,11 +37,14 @@ def load_users():
     except json.JSONDecodeError:
         st.error(f"Error decoding JSON from {USERS_DB}. The file may be corrupted. Returning an empty dictionary.")
         return {}  # Return an empty dictionary if the JSON is invalid
+
 def save_users(data):
     with open(USERS_DB, "w") as f:
         json.dump(data, f, indent=4)
+
 # Load Users
 user_data = load_users()
+
 # Create credentials for streamlit_authenticator
 user_credentials = {'usernames': {}}
 for uname, uinfo in user_data.items():
@@ -46,6 +53,7 @@ for uname, uinfo in user_data.items():
             'name': uinfo.get('name', uname),
             'password': stauth.Hasher([uinfo['password']]).generate()[0]
         }
+
 # Add admin user
 admin_user = 'admin'
 if admin_user not in user_credentials['usernames']:
@@ -53,13 +61,16 @@ if admin_user not in user_credentials['usernames']:
         'name': 'Admin User',
         'password': stauth.Hasher(['adminpass']).generate()[0]
     }
+
 # Authentication Setup
 authenticator = stauth.Authenticate(
     user_credentials,
     'resume_app', 'abcdef', cookie_expiry_days=30
 )
+
 # App Configuration
 st.set_page_config(page_title="ResumeReadyPro", page_icon="📄", layout="wide")
+
 # Styling
 st.markdown("""
     <style>
@@ -87,8 +98,10 @@ st.markdown("""
         }
     </style>
 """, unsafe_allow_html=True)
+
 # Login
 name, auth_status, username = authenticator.login("Login", "main")
+
 if auth_status:
     authenticator.logout("Logout", "sidebar")
     st.sidebar.image("https://i.imgur.com/m0E0FLO.png", width=150)
@@ -98,17 +111,21 @@ if auth_status:
     ])
     st.title("📄 ResumeReadyPro: AI Resume Enhancer")
     st.markdown("---")
+
     # Check if user_data is None or not a dictionary
     if not isinstance(user_data, dict):
         st.error("Error: user_data is not a dictionary or is None.")  # Display an error message in the app
         user_data = {}  # Initialize to an empty dictionary to avoid further errors
+
     # Debugging prints (remove in production)
     print(f"Type of 'user_data' before check: {type(user_data)}")
     print(f"Value of 'user_data' before check: {user_data}")
-    if username not in user_data:
+
+    if username not in user_
         # Indented code block
         print("User not found.")
         user_data[username] = {"summaries": 0, "resumes": 0, "questions": 0}
+
     if page == "Generate Summary":
         st.subheader("✍️ Generate a Resume Summary")
         full_name = st.text_input("Your Full Name")
@@ -130,6 +147,7 @@ if auth_status:
                 save_users(user_data)
             except Exception as e:
                 st.error(f"An error occurred: {e}")
+
     elif page == "Upload Resume":
         st.subheader("📤 Upload Resume and Generate Interview Questions")
         uploaded = st.file_uploader("Upload PDF Resume", type=["pdf"])
@@ -152,6 +170,7 @@ if auth_status:
                     save_users(user_data)
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
+
     elif page == "Admin Dashboard":
         st.subheader("📊 Admin Dashboard")
         df = pd.DataFrame.from_dict(user_data, orient='index')
@@ -166,6 +185,7 @@ if auth_status:
                 st.download_button("Download CSV", df.to_csv().encode('utf-8'), "user_data.csv")
             else:
                 st.download_button("Download JSON", json.dumps(user_data, indent=4), "user_data.json")
+
     elif page == "Register User":
         st.subheader("Register New User")
         new_user = st.text_input("Username")
@@ -176,6 +196,7 @@ if auth_status:
                 user_data[new_user] = {"name": new_name, "password": new_pass, "summaries": 0, "resumes": 0, "questions": 0}
                 save_users(user_data)
                 st.success("User registered!")
+
     elif page == "About":
         st.markdown("""
             ### About ResumeReadyPro
@@ -186,7 +207,10 @@ if auth_status:
             - Register and manage user profiles
             > If you forgot your username or password, please contact support@example.com
         """)
+
 elif auth_status is False:
-    st.error("Username or password is incorrect")
+    st.error("Invalid username or password")
+    st.caption("🔒 Forgot your password or username? Contact support@example.com")
+
 elif auth_status is None:
-    st.warning("Please enter your username and password")
+    st.warning("Enter your credentials to continue")
