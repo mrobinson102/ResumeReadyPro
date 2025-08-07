@@ -117,18 +117,18 @@ if auth_status:
             experience = st.text_area("Work Experience Summary")
             skills = st.text_area("Skills / Tools / Technologies")
     
-            if st.button("Generate Summary"):
-                prompt = f"Generate a professional resume summary for {full_name} targeting the role of {career_goal}. " \
-                         f"Include experience: {experience}. Skills: {skills}."
-                response = openai.ChatCompletion.create(
-                    model="gpt-4",
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                result = response.choices[0].message.content
-                st.success("Summary Generated!")
-                st.text_area("Generated Summary", result, height=200)
-                user_data[username]["summaries"] += 1
-                save_users(user_data)
+                if st.button("Generate Summary"):
+                    prompt = f"Generate a professional resume summary for {full_name} targeting the role of {career_goal}. " \
+                             f"Include experience: {experience}. Skills: {skills}."
+                    response = openai.ChatCompletion.create(
+                        model="gpt-4",
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    result = response.choices[0].message.content
+                    st.success("Summary Generated!")
+                    st.text_area("Generated Summary", result, height=200)
+                    user_data[username]["summaries"] += 1
+                    save_users(user_data)
 
     elif page == "Generate Summary":
     st.subheader("✍️ Resume Summary or Advanced Generator")
