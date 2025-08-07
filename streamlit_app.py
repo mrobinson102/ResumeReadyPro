@@ -102,11 +102,9 @@ if auth_status:
     if not isinstance(user_data, dict):
         st.error("Error: user_data is not a dictionary or is None.")  # Display an error message in the app
         user_data = {}  # Initialize to an empty dictionary to avoid further errors
-
     # Debugging prints (remove in production)
     print(f"Type of 'user_data' before check: {type(user_data)}")
     print(f"Value of 'user_data' before check: {user_data}")
-
     if username not in user_
         user_data[username] = {"summaries": 0, "resumes": 0, "questions": 0}
     if page == "Generate Summary":
