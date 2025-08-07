@@ -107,7 +107,7 @@ if auth_status:
     print(f"Value of 'user_data' before check: {user_data}")
     if username not in user_:
         # Indented code block
-    print("User not found.")
+        print("User not found.")
         user_data[username] = {"summaries": 0, "resumes": 0, "questions": 0}
     if page == "Generate Summary":
         st.subheader("✍️ Generate a Resume Summary")
