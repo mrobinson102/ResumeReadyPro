@@ -148,7 +148,7 @@ if auth_status:
             save_users(user_data)
 
 
-    elif page == "Generate Summary":
+   elif page == "Generate Summary":
     st.subheader("  Resume Summary or Advanced Generator")
 
     advanced = st.checkbox("Use Advanced Prompt Templates")
