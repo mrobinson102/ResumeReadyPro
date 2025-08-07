@@ -92,8 +92,7 @@ if auth_status:
         st.subheader("📤 Upload Resume to Generate Questions")
         uploaded = st.file_uploader("Upload Resume (PDF)", type="pdf")
         if uploaded:
-            text = "
-".join([p.extract_text() for p in PdfReader(uploaded).pages])
+            text = "n/".join([p.extract_text() for p in PdfReader(uploaded).pages])
             st.text_area("Resume Content", text, height=200)
             st.text("⚠️ GPT generation skipped (API calls disabled).")
             user_data[username]["resumes"] += 1
