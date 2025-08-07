@@ -172,7 +172,7 @@ if auth_status:
         experience = st.text_area("Work Experience Summary")
         skills = st.text_area("Skills / Tools / Technologies")
 
-        if st.button("Generate Summary"):
+            if st.button("Generate Summary"):
             prompt = f"Generate a professional resume summary for {full_name} targeting the role of {career_goal}. " \
                      f"Include experience: {experience}. Skills: {skills}."
             response = openai.ChatCompletion.create(
