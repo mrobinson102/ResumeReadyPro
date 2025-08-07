@@ -91,7 +91,7 @@ if auth_status:
     ])
     st.title("📄 ResumeReadyPro: AI Resume Enhancer")
     st.markdown("---")
-    if username not in user_
+    if username not in user:
         user_data[username] = {"summaries": 0, "resumes": 0, "questions": 0}
     if page == "Generate Summary":
         st.subheader("✍️ Generate a Resume Summary")
