@@ -32,6 +32,9 @@ authenticator = stauth.Authenticate(
     'resume_app', 'abcdef', cookie_expiry_days=30
 )
 
+# Set global app config
+st.set_page_config(page_title="ResumeReadyPro", page_icon="📄", layout="wide")
+
 # Custom login UI
 st.markdown("""
     <style>
@@ -58,7 +61,6 @@ st.markdown("""
 name, authentication_status, username = authenticator.login("Login", "main")
 
 if authentication_status:
-    st.set_page_config(page_title="ResumeReadyPro", page_icon="📄", layout="centered")
     authenticator.logout("Logout", "sidebar")
     st.sidebar.title(f"Welcome {name}")
 
@@ -159,7 +161,7 @@ if authentication_status:
 
     elif page == "Admin Dashboard":
         st.header("📊 Admin Dashboard")
-        st.write("Coming soon: user analytics, resume stats, usage insights...")
+        st.markdown("### Usage Analytics")
         usage_data = {
             "Metric": ["Summaries Generated", "Resumes Uploaded", "Questions Generated"],
             "Count": [42, 28, 35]
