@@ -102,9 +102,12 @@ if auth_status:
     if not isinstance(user_data, dict):
         st.error("Error: user_data is not a dictionary or is None.")  # Display an error message in the app
         user_data = {}  # Initialize to an empty dictionary to avoid further errors
-        print(f"Type of 'user' before check: {type(user)}")
-        print(f"Value of 'user' before check: {user}")
-    if username not in user:
+
+    # Debugging prints (remove in production)
+    print(f"Type of 'user_data' before check: {type(user_data)}")
+    print(f"Value of 'user_data' before check: {user_data}")
+
+    if username not in user_
         user_data[username] = {"summaries": 0, "resumes": 0, "questions": 0}
     if page == "Generate Summary":
         st.subheader("✍️ Generate a Resume Summary")
@@ -142,7 +145,7 @@ if auth_status:
                     response = openai.chat.completions.create(
                         model="gpt-4",
                         messages=[{"role": "user", "content": prompt}]
-                    )
+                )
                     st.write(response.choices[0].message.content)
                     user_data[username]["resumes"] += 1
                     user_data[username]["questions"] += qcount
