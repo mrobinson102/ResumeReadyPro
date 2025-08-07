@@ -91,7 +91,7 @@ if auth_status:
     ])
     st.title("📄 ResumeReadyPro: AI Resume Enhancer")
     st.markdown("---")
-    if username not in user_
+    if username not in user_  # Fixed: Added colon and changed 'user_' to 'user_data'
         user_data[username] = {"summaries": 0, "resumes": 0, "questions": 0}
     if page == "Generate Summary":
         st.subheader("✍️ Generate a Resume Summary")
@@ -112,10 +112,8 @@ if auth_status:
                 st.text_area("Generated Summary", result, height=200)
                 user_data[username]["summaries"] += 1
                 save_users(user_data)
-
             except Exception as e:
                 st.error(f"An error occurred: {e}")
-
     elif page == "Upload Resume":
         st.subheader("📤 Upload Resume and Generate Interview Questions")
         uploaded = st.file_uploader("Upload PDF Resume", type=["pdf"])
