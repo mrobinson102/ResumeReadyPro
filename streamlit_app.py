@@ -59,37 +59,28 @@ st.markdown("""
     <style>
         .block-container {
             padding-top: 2rem;
-            font-family: 'Segoe UI', sans-serif;
         }
         .sidebar .sidebar-content {
-            background-color: #f0f4f8;
+            background-color: #eef2f3;
         }
         .stButton > button {
             color: white;
-            background: linear-gradient(to right, #6a11cb, #2575fc);
+            background: linear-gradient(to right, #00b894, #0984e3);
             border: none;
             padding: 0.5rem 1rem;
             border-radius: 0.5rem;
             font-weight: bold;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
         }
         .stButton > button:hover {
-            background: linear-gradient(to right, #43cea2, #185a9d);
+            background: linear-gradient(to right, #6c5ce7, #00cec9);
         }
         .stTextInput > div > input,
         .stTextArea > div > textarea {
             border-radius: 0.5rem;
-            border: 1px solid #ced6e0;
-            background-color: #f9f9f9;
+            border: 1px solid #dfe6e9;
         }
         .css-1aumxhk, .css-1kyxreq {
             font-family: 'Segoe UI', sans-serif;
-        }
-        .stSelectbox > div > div {
-            border-radius: 0.5rem;
-        }
-        .stSlider > div {
-            padding-top: 1rem;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -102,4 +93,25 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Continue with rest of the app logic (authentication, page logic, etc.)...
+name, authentication_status, username = authenticator.login("Login", "main")
+
+if authentication_status:
+    authenticator.logout("Logout", "sidebar")
+    st.sidebar.image("https://i.imgur.com/m0E0FLO.png", width=150)
+    st.sidebar.markdown(f"<h3 style='color:#2d3436;'>Welcome {username}</h3>", unsafe_allow_html=True)
+
+    page = st.sidebar.radio("Go to", [
+        "Generate Summary", "Upload Resume", "Admin Dashboard", "Register User", "About"
+    ])
+    st.title("📄 ResumeReadyPro: AI Resume Enhancer")
+    st.markdown("---")
+
+    user_data = load_users()
+    user_data.setdefault(username, {"summaries": 0, "resumes": 0, "questions": 0})
+
+    # rest of the app continues as previously defined...
+
+elif authentication_status is False:
+    st.error("Username or password is incorrect")
+elif authentication_status is None:
+    st.warning("Please enter your username and password")
