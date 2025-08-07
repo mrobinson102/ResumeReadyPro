@@ -4,10 +4,13 @@ import os
 from io import BytesIO
 from fpdf import FPDF
 from PyPDF2 import PdfReader
+import pandas as pd
+import json
 import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
 from dotenv import load_dotenv
+import matplotlib.pyplot as plt
 
 # Load environment variables
 load_dotenv()
@@ -137,15 +140,40 @@ if authentication_status:
                     except Exception as e:
                         st.error(f"Error: {e}")
 
+            st.markdown("---")
+            st.markdown("### 📊 Resume Insights")
+            try:
+                insights_prompt = f"Extract top 10 skills, certifications, job titles, and industries from this resume:\n{resume_text}"
+                insights_response = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo",
+                    messages=[{"role": "user", "content": insights_prompt}]
+                )
+                insights_text = insights_response.choices[0].message.content.strip()
+                st.info(insights_text)
+
+                st.download_button("⬇️ Export Insights as JSON", data=json.dumps(insights_text), file_name="resume_insights.json")
+                st.download_button("⬇️ Export Insights as CSV", data=insights_text, file_name="resume_insights.csv")
+
+            except Exception as e:
+                st.error(f"Insights Error: {e}")
+
     elif page == "Admin Dashboard":
         st.header("📊 Admin Dashboard")
         st.write("Coming soon: user analytics, resume stats, usage insights...")
+        usage_data = {
+            "Metric": ["Summaries Generated", "Resumes Uploaded", "Questions Generated"],
+            "Count": [42, 28, 35]
+        }
+        df_usage = pd.DataFrame(usage_data)
+        st.dataframe(df_usage)
+
+        st.bar_chart(df_usage.set_index("Metric"))
 
     elif page == "About":
         st.header("ℹ️ About ResumeReadyPro")
         st.markdown("""
         ResumeReadyPro is an AI-powered tool designed to help professionals generate strong resume summaries and prepare for interviews with tailored questions — all from their existing resume content.
-        
+
         Built using Streamlit, OpenAI, and PDF parsing tools.
         """)
 
