@@ -9,4 +9,4 @@ openai
 Pillow
 matplotlib
 PyYAML
-streamlit-authenticator
+
