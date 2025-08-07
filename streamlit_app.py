@@ -113,7 +113,7 @@ if auth_status:
 elif page == "Generate Summary":
         st.subheader("  Resume Summary or Advanced Generator")
 
-    advanced = st.checkbox("Use Advanced Prompt Templates")
+advanced = st.checkbox("Use Advanced Prompt Templates")
     if advanced:
         selected_prompt = st.selectbox("Choose Template", list(prompt_templates.keys()))
         user_input = st.text_area("Enter Input for Template", height=200)
