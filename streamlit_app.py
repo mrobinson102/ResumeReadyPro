@@ -146,26 +146,7 @@ if auth_status:
             st.text_area("Generated Summary", result, height=200)
             user_data[username]["summaries"] += 1
             save_users(user_data)
-
-
-    elif page == "Generate Summary":
-    st.subheader("✍️ Resume Summary or Advanced Generator")
-
-    advanced = st.checkbox("Use Advanced Prompt Templates")
-    if advanced:
-        selected_prompt = st.selectbox("Choose Template", list(prompt_templates.keys()))
-        user_input = st.text_area("Enter Input for Template", height=200)
-
-        if st.button("Generate Using Template"):
-            filled_prompt = prompt_templates[selected_prompt].format(user_input=user_input)
-            response = openai.ChatCompletion.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": filled_prompt}],
-                temperature=0.7
-            )
-            st.text_area("Generated Output", response.choices[0].message.content, height=250)
-            user_data[username]["summaries"] += 1
-            save_users(user_data)
+  
     else:
         full_name = st.text_input("Your Full Name")
         career_goal = st.text_input("Job Title / Career Goal")
