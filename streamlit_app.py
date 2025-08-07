@@ -206,105 +206,105 @@ if auth_status:
                 save_users(user_data)
 
 # The remaining routes (Upload Resume, Admin Dashboard, Register User, About) would follow...
-      else:
-            full_name = st.text_input("Your Full Name")
-            career_goal = st.text_input("Job Title / Career Goal")
-            experience = st.text_area("Work Experience Summary")
-            skills = st.text_area("Skills / Tools / Technologies")
-    
-            if st.button("Generate Summary"):
-                prompt = f"Generate a professional resume summary for {full_name} targeting the role of {career_goal}. " \
-                         f"Include experience: {experience}. Skills: {skills}."
-                response = openai.ChatCompletion.create(
-                    model="gpt-4",
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                result = response.choices[0].message.content
-                st.success("Summary Generated!")
-                st.text_area("Generated Summary", result, height=200)
-                user_data[username]["summaries"] += 1
-                save_users(user_data)
-    
-    
-        elif page == "Generate Summary":
-        st.subheader("✍️ Resume Summary or Advanced Generator")
-    
-        advanced = st.checkbox("Use Advanced Prompt Templates")
-        if advanced:
-            selected_prompt = st.selectbox("Choose Template", list(prompt_templates.keys()))
-            user_input = st.text_area("Enter Input for Template", height=200)
-    
-            if st.button("Generate Using Template"):
-                filled_prompt = prompt_templates[selected_prompt].format(user_input=user_input)
-                response = openai.ChatCompletion.create(
-                    model="gpt-4",
-                    messages=[{"role": "user", "content": filled_prompt}],
-                    temperature=0.7
-                )
-                st.text_area("Generated Output", response.choices[0].message.content, height=250)
-                user_data[username]["summaries"] += 1
-                save_users(user_data)
-        else:
-            full_name = st.text_input("Your Full Name")
-            career_goal = st.text_input("Job Title / Career Goal")
-            experience = st.text_area("Work Experience Summary")
-            skills = st.text_area("Skills / Tools / Technologies")
-    
+          else:
+                full_name = st.text_input("Your Full Name")
+                career_goal = st.text_input("Job Title / Career Goal")
+                experience = st.text_area("Work Experience Summary")
+                skills = st.text_area("Skills / Tools / Technologies")
+        
                 if st.button("Generate Summary"):
-                prompt = f"Generate a professional resume summary for {full_name} targeting the role of {career_goal}. " \
-                         f"Include experience: {experience}. Skills: {skills}."
-                response = openai.ChatCompletion.create(
-                    model="gpt-4",
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                result = response.choices[0].message.content
-                st.success("Summary Generated!")
-                st.text_area("Generated Summary", result, height=200)
-                user_data[username]["summaries"] += 1
-                save_users(user_data)
-    
-    
-        elif page == "Admin Dashboard":
-            st.subheader("📊 Admin Dashboard")
-            df = pd.DataFrame.from_dict(user_data, orient='index')
-            st.dataframe(df)
-    
-            fig, ax = plt.subplots()
-            df[["summaries", "resumes", "questions"]].sum().plot(kind='bar', ax=ax)
-            ax.set_title("ResumeReadyPro Usage Metrics")
-            st.pyplot(fig)
-    
-            format_opt = st.selectbox("Export Format", ["CSV", "JSON"])
-            if st.button("Download Export"):
-                if format_opt == "CSV":
-                    st.download_button("Download CSV", df.to_csv().encode('utf-8'), "user_data.csv")
-                else:
-                    st.download_button("Download JSON", json.dumps(user_data, indent=4), "user_data.json")
-    
-        elif page == "Register User":
-            st.subheader("Register New User")
-            new_user = st.text_input("Username")
-            new_name = st.text_input("Full Name")
-            new_pass = st.text_input("Password", type="password")
-            if st.button("Register"):
-                if new_user and new_pass:
-                    user_data[new_user] = {"name": new_name, "password": new_pass, "summaries": 0, "resumes": 0, "questions": 0}
+                    prompt = f"Generate a professional resume summary for {full_name} targeting the role of {career_goal}. " \
+                             f"Include experience: {experience}. Skills: {skills}."
+                    response = openai.ChatCompletion.create(
+                        model="gpt-4",
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    result = response.choices[0].message.content
+                    st.success("Summary Generated!")
+                    st.text_area("Generated Summary", result, height=200)
+                    user_data[username]["summaries"] += 1
                     save_users(user_data)
-                    st.success("User registered!")
-    
-        elif page == "About":
-            st.markdown("""
-                ### About ResumeReadyPro
-                ResumeReadyPro is a personalized AI assistant designed to help professionals and job seekers:
-                - Generate polished resume summaries
-                - Upload resumes and get interview questions
-                - Track usage and progress via the admin dashboard
-                - Register and manage user profiles
-    
-                > If you forgot your username or password, please contact support@example.com
-            """)
-    
-    elif auth_status is False:
-        st.error("Username or password is incorrect")
-elif auth_status is None:
-    st.warning("Please enter your username and password")
+        
+        
+            elif page == "Generate Summary":
+            st.subheader("✍️ Resume Summary or Advanced Generator")
+        
+            advanced = st.checkbox("Use Advanced Prompt Templates")
+            if advanced:
+                selected_prompt = st.selectbox("Choose Template", list(prompt_templates.keys()))
+                user_input = st.text_area("Enter Input for Template", height=200)
+        
+                if st.button("Generate Using Template"):
+                    filled_prompt = prompt_templates[selected_prompt].format(user_input=user_input)
+                    response = openai.ChatCompletion.create(
+                        model="gpt-4",
+                        messages=[{"role": "user", "content": filled_prompt}],
+                        temperature=0.7
+                    )
+                    st.text_area("Generated Output", response.choices[0].message.content, height=250)
+                    user_data[username]["summaries"] += 1
+                    save_users(user_data)
+            else:
+                full_name = st.text_input("Your Full Name")
+                career_goal = st.text_input("Job Title / Career Goal")
+                experience = st.text_area("Work Experience Summary")
+                skills = st.text_area("Skills / Tools / Technologies")
+        
+                    if st.button("Generate Summary"):
+                    prompt = f"Generate a professional resume summary for {full_name} targeting the role of {career_goal}. " \
+                             f"Include experience: {experience}. Skills: {skills}."
+                    response = openai.ChatCompletion.create(
+                        model="gpt-4",
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    result = response.choices[0].message.content
+                    st.success("Summary Generated!")
+                    st.text_area("Generated Summary", result, height=200)
+                    user_data[username]["summaries"] += 1
+                    save_users(user_data)
+        
+        
+            elif page == "Admin Dashboard":
+                st.subheader("📊 Admin Dashboard")
+                df = pd.DataFrame.from_dict(user_data, orient='index')
+                st.dataframe(df)
+        
+                fig, ax = plt.subplots()
+                df[["summaries", "resumes", "questions"]].sum().plot(kind='bar', ax=ax)
+                ax.set_title("ResumeReadyPro Usage Metrics")
+                st.pyplot(fig)
+        
+                format_opt = st.selectbox("Export Format", ["CSV", "JSON"])
+                if st.button("Download Export"):
+                    if format_opt == "CSV":
+                        st.download_button("Download CSV", df.to_csv().encode('utf-8'), "user_data.csv")
+                    else:
+                        st.download_button("Download JSON", json.dumps(user_data, indent=4), "user_data.json")
+        
+            elif page == "Register User":
+                st.subheader("Register New User")
+                new_user = st.text_input("Username")
+                new_name = st.text_input("Full Name")
+                new_pass = st.text_input("Password", type="password")
+                if st.button("Register"):
+                    if new_user and new_pass:
+                        user_data[new_user] = {"name": new_name, "password": new_pass, "summaries": 0, "resumes": 0, "questions": 0}
+                        save_users(user_data)
+                        st.success("User registered!")
+        
+            elif page == "About":
+                st.markdown("""
+                    ### About ResumeReadyPro
+                    ResumeReadyPro is a personalized AI assistant designed to help professionals and job seekers:
+                    - Generate polished resume summaries
+                    - Upload resumes and get interview questions
+                    - Track usage and progress via the admin dashboard
+                    - Register and manage user profiles
+        
+                    > If you forgot your username or password, please contact support@example.com
+                """)
+        
+        elif auth_status is False:
+            st.error("Username or password is incorrect")
+    elif auth_status is None:
+        st.warning("Please enter your username and password")
