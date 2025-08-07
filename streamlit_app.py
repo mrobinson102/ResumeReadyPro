@@ -130,28 +130,43 @@ if auth_status:
             user_data[username]["summaries"] += 1
             save_users(user_data)
 
-    elif page == "Upload Resume":
-        st.subheader("📤 Upload Resume and Generate Interview Questions")
-        uploaded = st.file_uploader("Upload PDF Resume", type=["pdf"])
+    elif page == "Generate Summary":
+    st.subheader("✍️ Resume Summary or Advanced Generator")
 
-        if uploaded:
-            reader = PdfReader(uploaded)
-            text = "\n".join([page.extract_text() for page in reader.pages])
-            st.text_area("Extracted Resume Text", text, height=200)
+    advanced = st.checkbox("Use Advanced Prompt Templates")
+    if advanced:
+        selected_prompt = st.selectbox("Choose Template", list(prompt_templates.keys()))
+        user_input = st.text_area("Enter Input for Template", height=200)
 
-            qtype = st.selectbox("Question Type", ["Behavioral", "Technical", "Mixed"])
-            qcount = st.slider("Number of Questions", 1, 10, 5)
+        if st.button("Generate Using Template"):
+            filled_prompt = prompt_templates[selected_prompt].format(user_input=user_input)
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": filled_prompt}],
+                temperature=0.7
+            )
+            st.text_area("Generated Output", response.choices[0].message.content, height=250)
+            user_data[username]["summaries"] += 1
+            save_users(user_data)
+    else:
+        full_name = st.text_input("Your Full Name")
+        career_goal = st.text_input("Job Title / Career Goal")
+        experience = st.text_area("Work Experience Summary")
+        skills = st.text_area("Skills / Tools / Technologies")
 
-            if st.button("Generate Interview Questions"):
-                prompt = f"Generate {qcount} {qtype} interview questions from this resume:\n{text}"
-                response = openai.ChatCompletion.create(
-                    model="gpt-4",
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                st.write(response.choices[0].message.content)
-                user_data[username]["resumes"] += 1
-                user_data[username]["questions"] += qcount
-                save_users(user_data)
+        if st.button("Generate Summary"):
+            prompt = f"Generate a professional resume summary for {full_name} targeting the role of {career_goal}. " \
+                     f"Include experience: {experience}. Skills: {skills}."
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": prompt}]
+            )
+            result = response.choices[0].message.content
+            st.success("Summary Generated!")
+            st.text_area("Generated Summary", result, height=200)
+            user_data[username]["summaries"] += 1
+            save_users(user_data)
+
 
     elif page == "Admin Dashboard":
         st.subheader("📊 Admin Dashboard")
