@@ -169,7 +169,11 @@ if authentication_status:
         df_usage = pd.DataFrame(usage_data)
         st.dataframe(df_usage)
 
-        st.bar_chart(df_usage.set_index("Metric"))
+        fig, ax = plt.subplots()
+        ax.bar(df_usage['Metric'], df_usage['Count'], color='skyblue')
+        ax.set_ylabel("Count")
+        ax.set_title("ResumeReadyPro Usage Metrics")
+        st.pyplot(fig)
 
     elif page == "About":
         st.header("ℹ️ About ResumeReadyPro")
