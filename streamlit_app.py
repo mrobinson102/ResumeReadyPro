@@ -10,7 +10,9 @@ import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
 from dotenv import load_dotenv
-import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt 
 
 # Load environment variables
 load_dotenv()
