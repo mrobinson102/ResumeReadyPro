@@ -13,10 +13,27 @@ from dotenv import load_dotenv
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# Paths
+USERS_DB = "user_data.json"
+
+# Initialize or load user data
+if not os.path.exists(USERS_DB):
+    with open(USERS_DB, "w") as f:
+        json.dump({}, f)
+
+def load_users():
+    with open(USERS_DB, "r") as f:
+        return json.load(f)
+
+def save_users(data):
+    with open(USERS_DB, "w") as f:
+        json.dump(data, f, indent=4)
 
 # Authentication Setup
 hashed_passwords = stauth.Hasher(['adminpass']).generate()
@@ -37,25 +54,41 @@ authenticator = stauth.Authenticate(
 # Set global app config
 st.set_page_config(page_title="ResumeReadyPro", page_icon="📄", layout="wide")
 
-# Custom login UI
+# App Styling
 st.markdown("""
     <style>
-        .login-container {
-            text-align: center;
-            padding: 2rem;
+        .block-container {
+            padding-top: 2rem;
         }
-        .login-header {
-            font-size: 2rem;
+        .sidebar .sidebar-content {
+            background-color: #eef2f3;
+        }
+        .stButton > button {
+            color: white;
+            background: linear-gradient(to right, #00b894, #0984e3);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
             font-weight: bold;
-            margin-bottom: 1rem;
         }
-        .login-sub {
-            color: #555;
-            margin-bottom: 2rem;
+        .stButton > button:hover {
+            background: linear-gradient(to right, #6c5ce7, #00cec9);
+        }
+        .stTextInput > div > input,
+        .stTextArea > div > textarea {
+            border-radius: 0.5rem;
+            border: 1px solid #dfe6e9;
+        }
+        .css-1aumxhk, .css-1kyxreq {
+            font-family: 'Segoe UI', sans-serif;
         }
     </style>
+""", unsafe_allow_html=True)
+
+# Custom login UI
+st.markdown("""
     <div class="login-container">
-        <div class="login-header">🔐 ResumeReadyPro Admin Login</div>
+        <div class="login-header">🔐 <strong style='color:#2d3436;'>ResumeReadyPro Admin Login</strong></div>
         <div class="login-sub">Please log in to access resume tools and analytics dashboard.</div>
     </div>
 """, unsafe_allow_html=True)
@@ -64,13 +97,15 @@ name, authentication_status, username = authenticator.login("Login", "main")
 
 if authentication_status:
     authenticator.logout("Logout", "sidebar")
-    st.sidebar.title(f"Welcome {name}")
+    st.sidebar.image("https://i.imgur.com/m0E0FLO.png", width=150)
+    st.sidebar.markdown("<h3 style='color:#2d3436;'>Welcome Admin User</h3>", unsafe_allow_html=True)
 
-    # Navigation
     page = st.sidebar.radio("Go to", ["Generate Summary", "Upload Resume", "Admin Dashboard", "About"])
-
     st.title("📄 ResumeReadyPro: AI Resume Enhancer")
     st.markdown("---")
+
+    user_data = load_users()
+    user_data.setdefault(username, {"summaries": 0, "resumes": 0, "questions": 0})
 
     if page == "Generate Summary":
         st.header("✍️ Generate a Resume Summary")
@@ -107,6 +142,8 @@ if authentication_status:
                         pdf_output.seek(0)
                         st.download_button("⬇️ Download as PDF", data=pdf_output, file_name="resume_summary.pdf", mime="application/pdf")
 
+                        user_data[username]["summaries"] += 1
+                        save_users(user_data)
                     except Exception as e:
                         st.error(f"Failed to generate summary: {e}")
             else:
@@ -141,6 +178,8 @@ if authentication_status:
                         st.success("✅ Questions Generated!")
                         st.markdown("### 🤖 AI-Generated Interview Questions")
                         st.write(questions)
+                        user_data[username]["questions"] += question_count
+                        save_users(user_data)
                     except Exception as e:
                         st.error(f"Error: {e}")
 
@@ -158,21 +197,33 @@ if authentication_status:
                 st.download_button("⬇️ Export Insights as JSON", data=json.dumps(insights_text), file_name="resume_insights.json")
                 st.download_button("⬇️ Export Insights as CSV", data=insights_text, file_name="resume_insights.csv")
 
+                user_data[username]["resumes"] += 1
+                save_users(user_data)
             except Exception as e:
                 st.error(f"Insights Error: {e}")
 
     elif page == "Admin Dashboard":
         st.header("📊 Admin Dashboard")
         st.markdown("### Usage Analytics")
-        usage_data = {
+
+        usage_df = pd.DataFrame.from_dict(user_data, orient="index")
+        usage_df = usage_df.fillna(0)
+        usage_df["user"] = usage_df.index
+        usage_df.reset_index(drop=True, inplace=True)
+
+        st.dataframe(usage_df)
+
+        summary_total = usage_df["summaries"].sum()
+        resume_total = usage_df["resumes"].sum()
+        question_total = usage_df["questions"].sum()
+
+        metrics_df = pd.DataFrame({
             "Metric": ["Summaries Generated", "Resumes Uploaded", "Questions Generated"],
-            "Count": [42, 28, 35]
-        }
-        df_usage = pd.DataFrame(usage_data)
-        st.dataframe(df_usage)
+            "Count": [summary_total, resume_total, question_total]
+        })
 
         fig, ax = plt.subplots()
-        ax.bar(df_usage['Metric'], df_usage['Count'], color='skyblue')
+        ax.bar(metrics_df['Metric'], metrics_df['Count'], color=['#00cec9', '#74b9ff', '#a29bfe'])
         ax.set_ylabel("Count")
         ax.set_title("ResumeReadyPro Usage Metrics")
         st.pyplot(fig)
