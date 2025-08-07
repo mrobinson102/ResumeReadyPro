@@ -24,8 +24,15 @@ if not os.path.exists(USERS_DB):
     with open(USERS_DB, "w") as f:
         json.dump({}, f)
 def load_users():
-    with open(USERS_DB, "r") as f:
-        return json.load(f)
+    try:
+        with open(USERS_DB, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        st.warning(f"User data file not found at {USERS_DB}. Creating a new one.")
+        return {}  # Return an empty dictionary if the file doesn't exist
+    except json.JSONDecodeError:
+        st.error(f"Error decoding JSON from {USERS_DB}. The file may be corrupted. Returning an empty dictionary.")
+        return {}  # Return an empty dictionary if the JSON is invalid
 def save_users(data):
     with open(USERS_DB, "w") as f:
         json.dump(data, f, indent=4)
@@ -91,7 +98,11 @@ if auth_status:
     ])
     st.title("📄 ResumeReadyPro: AI Resume Enhancer")
     st.markdown("---")
-    if username not in user:  
+    # Check if user_data is None or not a dictionary
+    if not isinstance(user_data, dict):
+        st.error("Error: user_data is not a dictionary or is None.")  # Display an error message in the app
+        user_data = {}  # Initialize to an empty dictionary to avoid further errors
+    if username not in user_
         user_data[username] = {"summaries": 0, "resumes": 0, "questions": 0}
     if page == "Generate Summary":
         st.subheader("✍️ Generate a Resume Summary")
