@@ -1,106 +1,216 @@
 # streamlit_app.py
-# ResumeReadyPro - Hybrid (Offline + GPT-ready)
-# ------------------------------------------------
-# Version: 1.0.0
-# Last Updated: 2025-08-08
-#
-# Features:
-# - Local auth (login/register/change password) with JSON storage
-# - Onboarding wizard for first-time users
-# - Generate Summary (Offline mock or GPT when enabled)
-# - Upload Resume -> extract text + generate interview questions (Offline/GPT)
-# - Prompt Lab (templates + tone controls)
-# - Job Fit & Salary Alignment Analyzer (weighted: required vs nice-to-have, seniority, years)
-# - Admin Dashboard with metrics + JSON/CSV export
-# - Export to TXT/PDF/DOCX
-#
-# Toggle GPT on by setting USE_GPT=True and providing OPENAI_API_KEY in your env.
 
 import streamlit as st
 import openai
 import os
-from io import BytesIO
-from fpdf import FPDF
-from PyPDF2 import PdfReader
-import pandas as pd
-import json
-import streamlit_authenticator as stauth
 from dotenv import load_dotenv
-import matplotlib.pyplot as plt
+from PyPDF2 import PdfReader
+import streamlit_authenticator as stauth
+import json
+import pandas as pd
 from datetime import datetime
-from modules.utils import load_users, save_users, hash_password
-from modules.ui import apply_custom_styles, show_about, show_onboarding
-from modules.features import generate_summary, upload_resume, prompt_lab, job_fit_analysis
-from modules.admin import admin_dashboard, register_user, change_password
+import matplotlib.pyplot as plt
+from fpdf import FPDF
+from PIL import Image
+from docx import Document
 
 # Load environment variables
 load_dotenv()
-USE_GPT = os.getenv("USE_GPT", "false").lower() == "true"
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Load and hash user credentials
+# Path for user data
 USERS_DB = "user_data.json"
-user_data = load_users(USERS_DB)
+if not os.path.exists(USERS_DB):
+    with open(USERS_DB, "w") as f:
+        json.dump({}, f)
+
+# Load/save user data
+def load_users():
+    with open(USERS_DB, "r") as f:
+        return json.load(f)
+
+def save_users(data):
+    with open(USERS_DB, "w") as f:
+        json.dump(data, f, indent=4)
+
+user_data = load_users()
+
+# Create credentials for authenticator
 user_credentials = {'usernames': {}}
 for uname, uinfo in user_data.items():
     if "password" in uinfo:
         user_credentials['usernames'][uname] = {
             'name': uinfo.get('name', uname),
-            'password': hash_password(uinfo['password'])
+            'password': stauth.Hasher([uinfo['password']]).generate()[0]
         }
 
-# Add admin if not present
-if "admin" not in user_credentials["usernames"]:
-    user_credentials["usernames"]["admin"] = {
-        "name": "Admin User",
-        "password": hash_password("adminpass")
+if 'admin' not in user_credentials['usernames']:
+    user_credentials['usernames']['admin'] = {
+        'name': 'Admin',
+        'password': stauth.Hasher(['adminpass']).generate()[0]
     }
 
-# Authenticator setup
+# Setup authentication
 authenticator = stauth.Authenticate(
-    user_credentials, 'resume_app', 'abcdef', cookie_expiry_days=30
+    user_credentials, 'resume_ready', 'abcdef', cookie_expiry_days=30
 )
 
-# App config and styling
-st.set_page_config("ResumeReadyPro", "📄", layout="wide")
-apply_custom_styles()
+# Streamlit config
+st.set_page_config(page_title="ResumeReadyPro", page_icon="🧠", layout="wide")
 
-# Login
+# Sidebar login
 name, auth_status, username = authenticator.login("Login", "main")
 
+# If logged in:
 if auth_status:
     authenticator.logout("Logout", "sidebar")
-    st.sidebar.image("https://i.imgur.com/m0E0FLO.png", width=150)
-    st.sidebar.write(f"👋 Welcome, {username}")
+    st.sidebar.image("ceo.jpg", width=150)
+    st.sidebar.markdown(f"### Welcome, {username}")
 
     page = st.sidebar.radio("Navigate", [
-        "🧠 Generate Summary", "📄 Upload Resume", "🧪 Prompt Lab",
-        "🧮 Job Fit & Salary", "🔐 Change Password",
-        "📊 Admin Dashboard", "➕ Register User", "ℹ️ About"
+        "Generate Summary", "Upload Resume", "Job Fit & Salary", "Prompt Lab",
+        "Admin Dashboard", "Register User", "Change Password", "Reset Password", "About"
     ])
 
     if username not in user_data:
         user_data[username] = {"summaries": 0, "resumes": 0, "questions": 0}
-        save_users(user_data, USERS_DB)
-        show_onboarding()
+        save_users(user_data)
 
-    if page == "🧠 Generate Summary":
-        generate_summary(username, user_data, save_users, USERS_DB, USE_GPT)
-    elif page == "📄 Upload Resume":
-        upload_resume(username, user_data, save_users, USERS_DB, USE_GPT)
-    elif page == "🧪 Prompt Lab":
-        prompt_lab(username, user_data, save_users, USERS_DB, USE_GPT)
-    elif page == "🧮 Job Fit & Salary":
-        job_fit_analysis(username, user_data, save_users, USERS_DB, USE_GPT)
-    elif page == "🔐 Change Password":
-        change_password(username, user_data, save_users, USERS_DB)
-    elif page == "📊 Admin Dashboard":
-        admin_dashboard(user_data)
-    elif page == "➕ Register User":
-        register_user(user_data, save_users, USERS_DB)
-    elif page == "ℹ️ About":
-        show_about()
+    st.title("📄 ResumeReadyPro")
+
+    # --- PAGE: Generate Summary ---
+    if page == "Generate Summary":
+        st.subheader("✍️ Resume Summary Generator")
+        full_name = st.text_input("Your Full Name")
+        career_goal = st.text_input("Career Goal / Job Title")
+        experience = st.text_area("Brief Work Experience")
+        skills = st.text_area("Skills / Technologies")
+
+        if st.button("Generate"):
+            prompt = f"Write a 3-sentence resume summary for {full_name}, targeting a role in {career_goal}. Use this experience: {experience}. Highlight these skills: {skills}."
+            try:
+                response = openai.chat.completions.create(
+                    model="gpt-4",
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                summary = response.choices[0].message.content
+                st.success("Generated Summary")
+                st.text_area("Summary", summary, height=150)
+                user_data[username]["summaries"] += 1
+                save_users(user_data)
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+    # --- PAGE: Upload Resume ---
+    elif page == "Upload Resume":
+        st.subheader("📤 Upload Resume")
+        uploaded = st.file_uploader("Upload your resume (PDF)", type=["pdf"])
+        if uploaded:
+            text = "\n".join([p.extract_text() for p in PdfReader(uploaded).pages])
+            st.text_area("Resume Text", text, height=250)
+            qtype = st.selectbox("Question Type", ["Behavioral", "Technical", "Mixed"])
+            qcount = st.slider("Number of Questions", 1, 10, 5)
+
+            if st.button("Generate Interview Questions"):
+                prompt = f"Create {qcount} {qtype} interview questions based on this resume:\n{text}"
+                try:
+                    response = openai.chat.completions.create(
+                        model="gpt-4",
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    questions = response.choices[0].message.content
+                    st.text_area("Generated Questions", questions, height=250)
+                    user_data[username]["resumes"] += 1
+                    user_data[username]["questions"] += qcount
+                    save_users(user_data)
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+    # --- PAGE: Job Fit & Salary Alignment ---
+    elif page == "Job Fit & Salary":
+        st.subheader("🎯 Job Description Analysis")
+        job_desc = st.text_area("Paste Job Description")
+        resume_input = st.text_area("Paste Your Resume Text")
+
+        if st.button("Analyze Fit"):
+            prompt = f"Analyze how well this resume fits the job description. Identify strengths, gaps, and suggest action steps.\n\nJob:\n{job_desc}\n\nResume:\n{resume_input}"
+            try:
+                response = openai.chat.completions.create(
+                    model="gpt-4",
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                analysis = response.choices[0].message.content
+                st.text_area("Fit Analysis", analysis, height=300)
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+    # --- PAGE: Prompt Lab ---
+    elif page == "Prompt Lab":
+        st.subheader("🧪 Prompt Lab")
+        user_prompt = st.text_area("Custom Prompt")
+        if st.button("Run"):
+            try:
+                response = openai.chat.completions.create(
+                    model="gpt-4",
+                    messages=[{"role": "user", "content": user_prompt}]
+                )
+                output = response.choices[0].message.content
+                st.text_area("Response", output, height=300)
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+    # --- PAGE: Admin Dashboard ---
+    elif page == "Admin Dashboard":
+        st.subheader("📊 Admin Dashboard")
+        df = pd.DataFrame.from_dict(user_data, orient="index")
+        st.dataframe(df)
+
+        fig, ax = plt.subplots()
+        df[["summaries", "resumes", "questions"]].sum().plot(kind="bar", ax=ax)
+        ax.set_title("App Usage Summary")
+        st.pyplot(fig)
+
+    # --- PAGE: Register User ---
+    elif page == "Register User":
+        st.subheader("Register New User")
+        new_user = st.text_input("Username")
+        new_name = st.text_input("Full Name")
+        new_pass = st.text_input("Password", type="password")
+        if st.button("Register"):
+            user_data[new_user] = {
+                "name": new_name, "password": new_pass, "summaries": 0, "resumes": 0, "questions": 0
+            }
+            save_users(user_data)
+            st.success("User registered.")
+
+    # --- PAGE: Change Password ---
+    elif page == "Change Password":
+        st.subheader("Change Password")
+        st.warning("Not yet implemented.")
+
+    # --- PAGE: Reset Password ---
+    elif page == "Reset Password":
+        st.subheader("Reset Password")
+        st.warning("Not yet implemented.")
+
+    # --- PAGE: About ---
+    elif page == "About":
+        st.subheader("About ResumeReadyPro")
+        st.image("ceo.jpg", width=200)
+        st.markdown("""
+        **ResumeReadyPro** is a professional résumé optimization and job readiness platform built for modern job seekers.
+
+        - 🧠 Powered by GPT-4
+        - 📄 Resume summarization and analysis
+        - 🔍 Job fit scoring and interview prep
+        - 🔐 User analytics and dashboard
+
+        **Founder & CEO:** Michelle Robinson  
+        **Contact:** support@resumereadypro.com
+        """)
+
+# Handle failed login
 elif auth_status is False:
-    st.error("Incorrect username or password")
+    st.error("Invalid credentials. Try again.")
 elif auth_status is None:
-    st.warning("Please enter your login credentials")
+    st.info("Enter username and password.")
