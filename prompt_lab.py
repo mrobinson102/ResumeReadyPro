@@ -1,23 +1,23 @@
-# prompt_lab.py
-
 import streamlit as st
 import os
 import openai
 from dotenv import load_dotenv
 
-# Fallback import for OpenAIError depending on package version
+# Handle backwards compatibility for exception class
 try:
     from openai.error import OpenAIError
 except ImportError:
     from openai import OpenAIError
 
-# Load API key
+# Load environment variable
 load_dotenv()
-openai.api_key = (
+api_key = (
     os.getenv("OPENAI_API_KEY")
     or os.getenv("OPENAI_KEY")
     or os.getenv("api_key")
 )
+
+client = openai.OpenAI(api_key=api_key)
 
 def prompt_lab_ui():
     st.title("🧪 Prompt Lab")
@@ -34,7 +34,7 @@ def prompt_lab_ui():
     if st.button("Run") and user_prompt.strip():
         try:
             with st.spinner("Generating response..."):
-                response = openai.ChatCompletion.create(
+                response = client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
                         {"role": "system", "content": "You are a professional resume writer and career assistant."},
