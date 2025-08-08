@@ -1,0 +1,3 @@
+# About ResumeReadyPro
+
+ResumeReadyPro is a professional AI-powered tool that helps candidates...
