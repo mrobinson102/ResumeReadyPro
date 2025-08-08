@@ -1,6 +1,10 @@
 prompt_templates = {
-    "Internship & Co-op Experience": """
-Generate a résumé section titled 'Internship & Co-op Experience'. Use the following input to format each role clearly with company name, role, dates, and bullet points for responsibilities and accomplishments. Highlight technologies used and any metrics if mentioned.
+    "Internship Experience": """Generate a résumé section titled 'Internship & Co-op Experience'...""",
+    "Categorized Projects": """Categorize the following projects into Internship, Academic, and Personal...""",
+    "GitHub Repo Bullets": """For each GitHub repository, generate a bullet point...""",
+    "Resume-Only (No Cover Letter)": """Only generate a résumé based on this input. No cover letter.""",
+    "Tech Summary": """Write a concise résumé summary for top tech roles at Microsoft, Amazon, etc..."""
+}
 
 Input:
 {user_input}
