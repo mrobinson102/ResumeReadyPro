@@ -64,7 +64,7 @@ name, auth_status, username = authenticator.login("Login", "main")
 # If logged in:
 if auth_status:
     authenticator.logout("Logout", "sidebar")
-    st.sidebar.image("ceo.jpg", width=150)
+    st.sidebar.image("assets/ceo.jpg", width=150)
     st.sidebar.markdown(f"### Welcome, {username}")
 
     page = st.sidebar.radio("Navigate", [
