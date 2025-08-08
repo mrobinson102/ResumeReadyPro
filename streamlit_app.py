@@ -196,7 +196,7 @@ if auth_status:
     # --- PAGE: About ---
     elif page == "About":
         st.subheader("About ResumeReadyPro")
-        st.image("ceo.jpg", width=200)
+        st.image("assets/ceo.jpg", width=200)
         st.markdown("""
         **ResumeReadyPro** is a professional résumé optimization and job readiness platform built for modern job seekers.
 
