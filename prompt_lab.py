@@ -1,10 +1,10 @@
 # prompt_lab.py
 
 import streamlit as st
-from openai import OpenAIError
 import os
-from dotenv import load_dotenv
 import openai
+from dotenv import load_dotenv
+
 
 # Load API key
 load_dotenv()
