@@ -8,7 +8,11 @@ import openai
 
 # Load API key
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_KEY") or os.getenv("api_key")
+openai.api_key = (
+    os.getenv("OPENAI_API_KEY")
+    or os.getenv("OPENAI_KEY")
+    or os.getenv("api_key")
+)
 
 def prompt_lab_ui():
     st.title("🧪 Prompt Lab")
@@ -28,8 +32,14 @@ def prompt_lab_ui():
                 response = openai.ChatCompletion.create(
                     model="gpt-3.5-turbo",
                     messages=[
-                        {"role": "system", "content": "You are a professional resume writer and career assistant."},
-                        {"role": "user", "content": user_prompt}
+                        {
+                            "role": "system",
+                            "content": "You are a professional resume writer and career assistant."
+                        },
+                        {
+                            "role": "user",
+                            "content": user_prompt
+                        }
                     ],
                     max_tokens=800,
                     temperature=0.7,
