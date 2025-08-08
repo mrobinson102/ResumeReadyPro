@@ -211,7 +211,7 @@ if auth_status:
         
 
     # --- PAGE: Admin Dashboard ---
-    elif page == "Admin Dashboard":
+elif page == "Admin Dashboard":
     st.subheader("📊 Admin Dashboard")
 
     # Keep only real user rows (skip any meta/system dicts)
@@ -253,7 +253,7 @@ if auth_status:
             fig.tight_layout()
             st.pyplot(fig)
         except Exception as e:
-            st.info(f"Chart unavailable: {e}")
+            st.info(f"Chart unavailable: {e}")    
 
 
     # --- PAGE: Register User ---
