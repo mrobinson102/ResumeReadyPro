@@ -356,7 +356,7 @@ elif page == "Reset Password":
                 st.success(msg) if ok else st.error(msg)
 
 # --- PAGE: About ---
-    elif page == "About":
+elif page == "About":
         st.subheader("About ResumeReadyPro")
         st.image("assets/ceo.jpg", width=200)
         st.markdown("""
@@ -369,7 +369,7 @@ elif page == "Reset Password":
 
         **Founder & CEO:** Michelle Robinson  
         **Contact:** support@resumereadypro.com
-        """)
+        """)    
     
 
 # Handle failed login
