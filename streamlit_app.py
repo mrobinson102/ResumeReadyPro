@@ -355,8 +355,7 @@ elif page == "Reset Password":
                 ok, msg = reset_password_with_token(uname2, token, new_pw2)
                 st.success(msg) if ok else st.error(msg)
 
-
-    # --- PAGE: About ---
+# --- PAGE: About ---
     elif page == "About":
         st.subheader("About ResumeReadyPro")
         st.image("assets/ceo.jpg", width=200)
@@ -371,6 +370,7 @@ elif page == "Reset Password":
         **Founder & CEO:** Michelle Robinson  
         **Contact:** support@resumereadypro.com
         """)
+    
 
 # Handle failed login
 elif auth_status is False:
