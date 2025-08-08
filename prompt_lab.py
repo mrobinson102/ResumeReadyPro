@@ -4,7 +4,7 @@ import streamlit as st
 import os
 import openai
 from dotenv import load_dotenv
-from openai.error import OpenAIError  # ✅ fixed import
+from openai.error import OpenAIError  
 
 # Load API key
 load_dotenv()
