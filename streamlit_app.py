@@ -155,12 +155,24 @@ if auth_status:
     elif page == "Admin Dashboard":
         st.subheader("📊 Admin Dashboard")
         df = pd.DataFrame.from_dict(user_data, orient="index")
-        st.dataframe(df)
+        st.dataframe(df, use_container_width=True)
 
-        fig, ax = plt.subplots()
-        df[["summaries", "resumes", "questions"]].sum().plot(kind="bar", ax=ax)
-        ax.set_title("App Usage Summary")
+    try:
+        # Make chart responsive & not oversized
+        bar_counts = df[["summaries", "resumes", "questions"]].sum()
+        fig, ax = plt.subplots(figsize=(5, 3))  # Smaller chart
+        bar_counts.plot(kind="bar", ax=ax, color="#2E86C1")
+
+        ax.set_title("App Usage Summary", fontsize=14)
+        ax.set_ylabel("Count")
+        ax.set_xlabel("")
+        ax.tick_params(axis="x", labelrotation=0)
+        ax.bar_label(ax.containers[0], label_type='edge', fontsize=9)
+
+        fig.tight_layout()
         st.pyplot(fig)
+    except Exception as e:
+        st.info(f"Chart unavailable: {e}")
 
     # --- PAGE: Register User ---
     elif page == "Register User":
