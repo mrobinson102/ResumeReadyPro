@@ -154,25 +154,24 @@ if auth_status:
     # --- PAGE: Admin Dashboard ---
     elif page == "Admin Dashboard":
         st.subheader("📊 Admin Dashboard")
+
+        c1, c2 = st.columns([1.4, 1])  # wider table, narrower chart
+    with c1:
         df = pd.DataFrame.from_dict(user_data, orient="index")
         st.dataframe(df, use_container_width=True)
 
-    try:
-        # Make chart responsive & not oversized
-        bar_counts = df[["summaries", "resumes", "questions"]].sum()
-        fig, ax = plt.subplots(figsize=(5, 3))  # Smaller chart
-        bar_counts.plot(kind="bar", ax=ax, color="#2E86C1")
-
-        ax.set_title("App Usage Summary", fontsize=14)
-        ax.set_ylabel("Count")
-        ax.set_xlabel("")
-        ax.tick_params(axis="x", labelrotation=0)
-        ax.bar_label(ax.containers[0], label_type='edge', fontsize=9)
-
-        fig.tight_layout()
-        st.pyplot(fig)
-    except Exception as e:
-        st.info(f"Chart unavailable: {e}")
+    with c2:
+        try:
+            bar_counts = df[["summaries", "resumes", "questions"]].sum()
+            fig, ax = plt.subplots(figsize=(4.5, 3))
+            bar_counts.plot(kind="bar", ax=ax, color="#2E86C1")
+            ax.set_title("Usage Summary", fontsize=12)
+            ax.tick_params(axis="x", labelrotation=0)
+            ax.bar_label(ax.containers[0], label_type='edge', fontsize=9)
+            fig.tight_layout()
+            st.pyplot(fig)
+        except Exception as e:
+            st.info(f"Chart unavailable: {e}")
 
     # --- PAGE: Register User ---
     elif page == "Register User":
