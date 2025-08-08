@@ -6,12 +6,12 @@
 # - Onboarding wizard for first-time users
 # - Generate Summary (Offline mock or GPT when enabled)
 # - Upload Resume -> extract text + generate interview questions (Offline/GPT)
-# - Job Fit & Salary Alignment Analyzer (offline; GPT-ready later)
+# - Prompt Lab (templates + tone controls)
+# - Job Fit & Salary Alignment Analyzer (weighted: required vs nice-to-have, seniority, years)
 # - Admin Dashboard with metrics + JSON/CSV export
 # - Export to TXT/PDF/DOCX
 #
 # Toggle GPT on by setting USE_GPT=True and providing OPENAI_API_KEY in your env.
-# This file runs fully offline by default.
 
 import os, json, re, io, hashlib
 from datetime import datetime
@@ -46,9 +46,9 @@ try:
 except Exception:
     plt = None
 
-# GPT toggle
+# ---------------- GPT toggle ----------------
 USE_GPT = False
-OPENAI_MODEL = "gpt-4o-mini"  # change later if desired
+OPENAI_MODEL = "gpt-4o-mini"
 try:
     import openai
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -170,7 +170,8 @@ Here’s how to get value fast:
 1) **Generate Summary** — create a clean, ATS-friendly intro  
 2) **Upload Resume** — extract text and practice interview questions  
 3) **Job Fit & Salary** — paste a JD, get a fit score, gaps, and salary alignment  
-4) **Admin Dashboard** — see usage and export data
+4) **Prompt Lab** — templates & tone control  
+5) **Admin Dashboard** — see usage and export data
 
 > This build runs **offline** by default. Flip to **GPT mode** later with `USE_GPT=True` + API key.
 """)
@@ -336,6 +337,106 @@ def gpt_chat(prompt: str) -> str:
     except Exception as e:
         return f"(GPT error) {e}"
 
+# ---------------- Prompt templates (offline + GPT-ready) ----------------
+PROMPT_TEMPLATES = {
+    "Concise Tech Summary": """Write a 3–4 sentence, ATS-friendly professional summary.
+Target role: {role}
+Key strengths: {skills}
+Experience context: {experience}
+Tone: {tone}. Keep it concise and metrics-aware.""",
+
+    "Impact Bullets (5)": """Create 5 resume bullets focused on measurable outcomes.
+Role: {role}
+Inputs: {experience}
+Skills: {skills}
+Tone: {tone}. Use strong verbs and numbers (e.g., reduced cost by X%).""",
+
+    "Internship/Co-op Section": """Generate a section titled 'Internship & Co-op Experience' with 3–6 bullets.
+Context: {experience}
+Skills: {skills}
+Tone: {tone}. Include company names (generic if missing), dates (approximate ok), and technologies.""",
+
+    "Projects – Categorized": """Categorize projects into Internship, Academic, and Personal.
+Projects text: {experience}
+Skills: {skills}
+Tone: {tone}. Provide 2–4 bullets per category (if relevant) with tech + result.""",
+}
+PROMPT_TONES = ["Neutral", "Confident", "Executive", "Friendly", "Direct", "Data-driven"]
+
+# ---------------- JD parsing & weighting helpers ----------------
+RE_REQUIRED = re.compile(r"(must[-\s]?have|required|requirements|we require|you must)", re.I)
+RE_NICE     = re.compile(r"(nice[-\s]?to[-\s]?have|preferred|bonus|plus)", re.I)
+RE_YEARS    = re.compile(r"(\d+)\+?\s+(years|yrs)", re.I)
+SENIOR_SIGNALS = {
+    "senior","lead","principal","staff","manager","management","architect","strategy","roadmap","mentoring","mentorship"
+}
+JUNIOR_SIGNALS = {"junior","assoc","associate","entry","new grad","intern"}
+
+def infer_seniority(text: str) -> str:
+    t = normalize(text)
+    has_senior = any(s in t for s in SENIOR_SIGNALS)
+    has_junior = any(j in t for j in JUNIOR_SIGNALS)
+    if has_senior and not has_junior:
+        return "Senior+"
+    if has_junior and not has_senior:
+        return "Junior/Associate"
+    return "Mid-level"
+
+def extract_years_required(text: str) -> int:
+    yrs = 0
+    for m in RE_YEARS.finditer(text):
+        try:
+            yrs = max(yrs, int(m.group(1)))
+        except Exception:
+            pass
+    return yrs
+
+def split_required_vs_nice(jd_text: str) -> tuple[set, set]:
+    lines = [l.strip() for l in jd_text.splitlines() if l.strip()]
+    required_block, preferred_block, current = [], [], None
+    for ln in lines:
+        if RE_REQUIRED.search(ln):
+            current = "req"; continue
+        if RE_NICE.search(ln):
+            current = "nice"; continue
+        if current == "req":
+            required_block.append(ln)
+        elif current == "nice":
+            preferred_block.append(ln)
+    req_keys = set(extract_keywords("\n".join(required_block)))
+    nice_keys = set(extract_keywords("\n".join(preferred_block)))
+    if not req_keys:
+        req_keys = set(extract_keywords(jd_text))
+    return req_keys, nice_keys
+
+def weighted_fit_score(resume_keys: set, req_keys: set, nice_keys: set) -> tuple[float, dict]:
+    req_tech, req_soft = req_keys & TECH_KEYWORDS, req_keys & SOFT_SKILLS
+    nice_tech, nice_soft = nice_keys & TECH_KEYWORDS, nice_keys & SOFT_SKILLS
+
+    have_req_tech  = resume_keys & req_tech
+    have_req_soft  = resume_keys & req_soft
+    have_nice_tech = resume_keys & nice_tech
+    have_nice_soft = resume_keys & nice_soft
+
+    w_req_tech, w_req_soft, w_nice_tech, w_nice_soft = 45, 25, 20, 10
+    sc_req_tech  = (len(have_req_tech)  / max(1, len(req_tech)))  * w_req_tech
+    sc_req_soft  = (len(have_req_soft)  / max(1, len(req_soft)))  * w_req_soft
+    sc_nice_tech = (len(have_nice_tech) / max(1, len(nice_tech))) * w_nice_tech
+    sc_nice_soft = (len(have_nice_soft) / max(1, len(nice_soft))) * w_nice_soft
+
+    score = round(min(100.0, sc_req_tech + sc_req_soft + sc_nice_tech + sc_nice_soft), 1)
+    details = {
+        "have_req_tech": sorted(have_req_tech),
+        "miss_req_tech": sorted(req_tech - resume_keys),
+        "have_req_soft": sorted(have_req_soft),
+        "miss_req_soft": sorted(req_soft - resume_keys),
+        "have_nice_tech": sorted(have_nice_tech),
+        "miss_nice_tech": sorted(nice_tech - resume_keys),
+        "have_nice_soft": sorted(have_nice_soft),
+        "miss_nice_soft": sorted(nice_soft - resume_keys),
+    }
+    return score, details
+
 # ---------------- UI: Login ----------------
 def login_panel():
     st.sidebar.markdown("### Login")
@@ -383,6 +484,29 @@ def page_generate_summary():
         st.download_button("Download .pdf", export_pdf(out), file_name="resume_summary.pdf", mime="application/pdf")
         st.download_button("Download .docx", export_docx(out), file_name="resume_summary.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
+    # Template shortcut inside Summary page (optional)
+    st.divider()
+    st.caption("Or use a template:")
+    tpl2 = st.selectbox("Template", ["(None)"] + list(PROMPT_TEMPLATES.keys()))
+    tone2 = st.selectbox("Template Tone", PROMPT_TONES, index=1)
+    if st.button("Generate with Template"):
+        if tpl2 != "(None)":
+            prompt = PROMPT_TEMPLATES[tpl2].format(
+                role=role or "Target Role",
+                skills=skills or "Python, SQL, AWS",
+                experience=experience or "3-5 years in cross-functional teams delivering data products",
+                tone=tone2
+            )
+            if USE_GPT and client:
+                out = gpt_chat(prompt)
+            else:
+                out = f"(Offline mock)\n\nTemplate: {tpl2}\nTone: {tone2}\n\n" + summary_offline(
+                    full_name=full_name or "Candidate", role=role, experience=experience, skills=skills
+                )
+            st.success("Template output:")
+            st.markdown(out)
+            st.download_button("Download .txt", out.encode("utf-8"), file_name="summary_template.txt")
+
 def page_upload_resume():
     st.subheader("📤 Upload Resume & Generate Interview Questions")
     pdf = st.file_uploader("Upload Resume (PDF/DOCX/TXT)", type=["pdf","docx","txt"])
@@ -414,8 +538,45 @@ def page_upload_resume():
         dl = "\n".join([f"{i}. {q}" for i, q in enumerate(qs, 1)])
         st.download_button("Download Questions (.txt)", dl.encode("utf-8"), file_name="interview_questions.txt")
 
+def page_prompt_lab():
+    st.subheader("🧪 Prompt Lab — Templates & Customization")
+    col1, col2 = st.columns(2)
+    with col1:
+        tpl = st.selectbox("Template", list(PROMPT_TEMPLATES.keys()))
+        tone = st.selectbox("Tone", PROMPT_TONES, index=1)
+        role = st.text_input("Target Role / Job Title")
+    with col2:
+        skills = st.text_area("Skills (comma or lines)", height=120)
+        experience = st.text_area("Experience / Context (free text)", height=120)
+
+    use_gpt = st.checkbox("Use GPT (if enabled)", value=False and USE_GPT)
+    if st.button("Generate from Template"):
+        prompt = PROMPT_TEMPLATES[tpl].format(
+            role=role or "Target Role",
+            skills=skills or "Python, SQL, AWS",
+            experience=experience or "3-5 years in cross-functional teams delivering data products",
+            tone=tone
+        )
+        if use_gpt and USE_GPT and client:
+            out = gpt_chat(prompt)
+        else:
+            out = f"(Offline mock)\n\nTemplate: {tpl}\nTone: {tone}\n\n" + summary_offline(
+                full_name="Candidate", role=role, experience=experience, skills=skills
+            )
+
+        st.success("Generated:")
+        st.markdown(out)
+
+        st.download_button("Download .txt", out.encode("utf-8"),
+                           file_name="prompt_lab_output.txt", mime="text/plain")
+        st.download_button("Download .pdf", export_pdf(out),
+                           file_name="prompt_lab_output.pdf", mime="application/pdf")
+        st.download_button("Download .docx", export_docx(out),
+                           file_name="prompt_lab_output.docx",
+                           mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+
 def page_job_fit_salary():
-    st.subheader("🧭 Job Fit & Salary Alignment Analyzer")
+    st.subheader("🧭 Job Fit & Salary Alignment Analyzer (Weighted, Smarter)")
     c1, c2 = st.columns(2)
     with c1:
         jd_file = st.file_uploader("Job Description (PDF/DOCX/TXT)", type=["pdf","docx","txt"], key="jd_file")
@@ -438,25 +599,27 @@ def page_job_fit_salary():
             st.error("Please provide both a JD and resume (upload or paste).")
             return
 
-        # keyword overlap
-        jd_keys = set(extract_keywords(jd_text))
+        jd_seniority = infer_seniority(jd_text)
+        years_req = extract_years_required(jd_text)
+        req_keys, nice_keys = split_required_vs_nice(jd_text)
         rs_keys = set(extract_keywords(resume_text))
-        matched = sorted(jd_keys & rs_keys)
-        missing = sorted(jd_keys - rs_keys)
-        jd_tech, jd_soft = jd_keys & TECH_KEYWORDS, jd_keys & SOFT_SKILLS
-        rs_tech, rs_soft = rs_keys & TECH_KEYWORDS, rs_keys & SOFT_SKILLS
-        tech_score = (len(rs_tech & jd_tech) / max(1, len(jd_tech))) * 70
-        soft_score = (len(rs_soft & jd_soft) / max(1, len(jd_soft))) * 30
-        fit_score = round(min(100, tech_score + soft_score), 1)
 
-        st.success(f"Fit Score: **{fit_score}%**")
+        fit_score, detail = weighted_fit_score(rs_keys, req_keys, nice_keys)
+
+        st.success(f"Weighted Fit Score: **{fit_score}%**")
+        st.caption(f"JD Seniority: **{jd_seniority}**  |  Years indicated: **{years_req or 'n/a'}**")
+
         colA, colB = st.columns(2)
         with colA:
-            st.markdown("**You Have**")
-            st.write(", ".join(matched) if matched else "—")
+            st.markdown("**Required — You Have**")
+            st.write(", ".join(detail["have_req_tech"] + detail["have_req_soft"]) or "—")
+            st.markdown("**Nice-to-have — You Have**")
+            st.write(", ".join(detail["have_nice_tech"] + detail["have_nice_soft"]) or "—")
         with colB:
-            st.markdown("**Missing**")
-            st.write(", ".join(missing) if missing else "—")
+            st.markdown("**Required — Missing (address these first)**")
+            st.write(", ".join(detail["miss_req_tech"] + detail["miss_req_soft"]) or "—")
+            st.markdown("**Nice-to-have — Missing**")
+            st.write(", ".join(detail["miss_nice_tech"] + detail["miss_nice_soft"]) or "—")
 
         band = estimate_salary_band(role, location_level)
         if band:
@@ -467,37 +630,42 @@ def page_job_fit_salary():
         else:
             st.warning("No salary band found for this role yet. Try a common title (e.g., 'Data Scientist').")
 
-        # Recs
         recs = []
-        if missing:
-            recs.append("Add bullets showing experience with missing items; quantify impact (latency↓, cost↓, throughput↑).")
-            if any(m in {"aws","azure","gcp"} for m in missing):
-                recs.append("Consider an Associate-level cloud cert to boost credibility fast.")
+        if detail["miss_req_tech"] or detail["miss_req_soft"]:
+            recs.append("Prioritize adding evidence for **required** missing items first.")
+        if any(m in {"aws","azure","gcp"} for m in detail["miss_req_tech"] + detail["miss_nice_tech"]):
+            recs.append("Consider an Associate-level cloud cert to quickly close credibility gaps.")
+        if jd_seniority == "Senior+" and years_req and years_req > 6:
+            recs.append("Emphasize scope/impact: systems scale, budgets, uptime, mentoring, cross-team influence.")
         if fit_score < 80:
-            recs.append("Tailor the summary to include 3–5 JD keywords you already match.")
+            recs.append("Tailor summary to include 3–5 **required** JD keywords you already match.")
         if band and s["status"] == "Above Market":
-            recs.append("Lower ask by ~10–15% or justify with scope (team size, budget, uptime).")
+            recs.append("Lower ask by ~10–15% or explicitly justify senior scope (team size, budgets, SLAs).")
         if not recs:
-            recs.append("You're well aligned. Focus on STAR stories for top projects.")
+            recs.append("You're well aligned. Focus on STAR stories and results.")
 
         st.markdown("### Recommendations")
         for r in recs:
             st.markdown(f"- {r}")
 
         report = (
-            f"ResumeReadyPro — Job Fit & Salary Alignment Report\n"
+            f"ResumeReadyPro — Job Fit & Salary Alignment Report (Weighted)\n"
             f"Generated: {datetime.utcnow().isoformat()}Z\n\n"
             f"Role: {role or '(unspecified)'}  |  Location: {location_level}\n"
             f"Expected salary: ${int(expected_salary):,}\n"
-            f"Fit Score: {fit_score}%\n\n"
-            f"JD Keywords: {', '.join(sorted(jd_keys)) or '—'}\n"
-            f"Resume Keywords: {', '.join(sorted(rs_keys)) or '—'}\n"
-            f"Matched: {', '.join(matched) or '—'}\n"
-            f"Missing: {', '.join(missing) or '—'}\n\n"
-            + (f"Market Band: ${s['band_low']:,}–${s['band_high']:,} (mid ${s['band_mid']:,})\n"
-               f"Salary Alignment: {s['status']}\n{s['note']}\n\n" if band else "")
-            + "Recommendations:\n" + "\n".join([f"- {x}" for x in recs])
+            f"JD Seniority: {jd_seniority}  |  Years indicated: {years_req or 'n/a'}\n"
+            f"Weighted Fit Score: {fit_score}%\n\n"
+            f"Required (have): {', '.join(detail['have_req_tech'] + detail['have_req_soft']) or '—'}\n"
+            f"Required (missing): {', '.join(detail['miss_req_tech'] + detail['miss_req_soft']) or '—'}\n"
+            f"Nice-to-have (have): {', '.join(detail['have_nice_tech'] + detail['have_nice_soft']) or '—'}\n"
+            f"Nice-to-have (missing): {', '.join(detail['miss_nice_tech'] + detail['miss_nice_soft']) or '—'}\n\n"
         )
+        if band:
+            report += (
+                f"Market Band: ${s['band_low']:,}–${s['band_high']:,} (mid ${s['band_mid']:,})\n"
+                f"Salary Alignment: {s['status']}\n{s['note']}\n\n"
+            )
+        report += "Recommendations:\n" + "\n".join([f"- {x}" for x in recs])
 
         st.download_button("⬇️ Download Report (.txt)", report.encode("utf-8"),
                            file_name="job_fit_salary_report.txt", mime="text/plain")
@@ -587,6 +755,7 @@ def page_about():
 - Generate resume summaries (offline or GPT when enabled)
 - Extract text from resumes and practice interview questions
 - Analyze Job Fit & Salary alignment with a clear action plan
+- Explore templates & tone in the Prompt Lab
 - Track usage via an Admin Dashboard and export your data
 
 This hybrid build runs **offline** by default. Flip to GPT by setting `USE_GPT=True` and adding `OPENAI_API_KEY`.
@@ -598,6 +767,7 @@ def nav():
         "Generate Summary",
         "Upload Resume",
         "Job Fit & Salary Alignment",
+        "Prompt Lab",
         "Admin Dashboard",
         "Register User",
         "Change Password",
@@ -632,6 +802,8 @@ def main():
         page_upload_resume()
     elif page == "Job Fit & Salary Alignment":
         page_job_fit_salary()
+    elif page == "Prompt Lab":
+        page_prompt_lab()
     elif page == "Admin Dashboard":
         page_admin()
     elif page == "Register User":
