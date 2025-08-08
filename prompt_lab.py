@@ -4,7 +4,7 @@ import streamlit as st
 import os
 import openai
 from dotenv import load_dotenv
-
+from openai.error import OpenAIError  # ✅ fixed import
 
 # Load API key
 load_dotenv()
@@ -32,14 +32,8 @@ def prompt_lab_ui():
                 response = openai.ChatCompletion.create(
                     model="gpt-3.5-turbo",
                     messages=[
-                        {
-                            "role": "system",
-                            "content": "You are a professional resume writer and career assistant."
-                        },
-                        {
-                            "role": "user",
-                            "content": user_prompt
-                        }
+                        {"role": "system", "content": "You are a professional resume writer and career assistant."},
+                        {"role": "user", "content": user_prompt}
                     ],
                     max_tokens=800,
                     temperature=0.7,
@@ -47,7 +41,7 @@ def prompt_lab_ui():
                 st.markdown("### ✨ Response")
                 st.write(response.choices[0].message.content.strip())
 
-        except openai.error.OpenAIError as e:
+        except OpenAIError as e:
             st.error(f"OpenAI API Error: {e}")
         except Exception as e:
             st.error(f"Unexpected Error: {e}")
