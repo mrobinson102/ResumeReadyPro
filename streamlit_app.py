@@ -147,19 +147,9 @@ if auth_status:
 
     # --- PAGE: Prompt Lab ---
     elif page == "Prompt Lab":
-    from prompt_lab import prompt_lab_ui
-    prompt_lab_ui()
-
-        if st.button("Run"):
-            try:
-                response = openai.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": user_prompt}]
-                )
-                output = response.choices[0].message.content
-                st.text_area("Response", output, height=300)
-            except Exception as e:
-                st.error(f"Error: {e}")
+        from prompt_lab import prompt_lab_ui
+        prompt_lab_ui()
+        
 
     # --- PAGE: Admin Dashboard ---
     elif page == "Admin Dashboard":
