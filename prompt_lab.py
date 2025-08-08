@@ -4,7 +4,12 @@ import streamlit as st
 import os
 import openai
 from dotenv import load_dotenv
-from openai.error import OpenAIError  
+
+# Fallback import for OpenAIError depending on package version
+try:
+    from openai.error import OpenAIError
+except ImportError:
+    from openai import OpenAIError
 
 # Load API key
 load_dotenv()
