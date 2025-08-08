@@ -14,6 +14,36 @@ from fpdf import FPDF
 from PIL import Image
 from docx import Document
 from prompt_lab import prompt_lab_ui
+# ---- helpers: safe text extraction ----
+def _read_txt(file):
+    try:
+        return file.read().decode("utf-8", errors="ignore")
+    except Exception:
+        try:
+            file.seek(0)
+            return file.read().decode("latin-1", errors="ignore")
+        except Exception:
+            return ""
+
+def extract_text_from_upload(uploaded_file):
+    """Return plain text from pdf/docx/txt; empty string if unsupported/failed."""
+    if not uploaded_file:
+        return ""
+    name = (uploaded_file.name or "").lower()
+    try:
+        if name.endswith(".pdf"):
+            reader = PdfReader(uploaded_file)
+            return "\n".join([(p.extract_text() or "") for p in reader.pages])
+        elif name.endswith(".docx"):
+            doc = Document(uploaded_file)
+            return "\n".join([p.text for p in doc.paragraphs])
+        elif name.endswith(".txt"):
+            return _read_txt(uploaded_file)
+        else:
+            # best effort: try text
+            return _read_txt(uploaded_file)
+    except Exception:
+        return ""
 
 # Load environment variables
 load_dotenv()
@@ -130,39 +160,68 @@ if auth_status:
     # --- PAGE: Job Fit & Salary Alignment ---
     elif page == "Job Fit & Salary":
         st.subheader("🎯 Job Description Analysis")
-        job_desc = st.text_area("Paste Job Description")
-        resume_input = st.text_area("Paste Your Resume Text")
-
+    
+        jd_col, resume_col = st.columns(2)
+        with jd_col:
+            jd_file = st.file_uploader("Upload Job Description (PDF/DOCX/TXT)", type=["pdf", "docx", "txt"], key="jd_up")
+            jd_text = st.text_area("…or paste JD text", value="", height=220, key="jd_text")
+            if jd_file and not jd_text.strip():
+                jd_text = extract_text_from_upload(jd_file)
+                st.session_state["jd_text"] = jd_text
+                st.experimental_rerun()
+    
+        with resume_col:
+            rs_file = st.file_uploader("Upload Your Resume (PDF/DOCX/TXT)", type=["pdf", "docx", "txt"], key="rs_up")
+            resume_text = st.text_area("…or paste your resume text", value="", height=220, key="rs_text")
+            if rs_file and not resume_text.strip():
+                resume_text = extract_text_from_upload(rs_file)
+                st.session_state["rs_text"] = resume_text
+                st.experimental_rerun()
+    
+        st.caption("Tip: uploading a file auto-fills the text box; you can still edit it before analysis.")
+    
         if st.button("Analyze Fit"):
-            prompt = f"Analyze how well this resume fits the job description. Identify strengths, gaps, and suggest action steps.\n\nJob:\n{job_desc}\n\nResume:\n{resume_input}"
-            try:
-                response = openai.chat.completions.create(
-                    model="gpt-4",
-                    messages=[{"role": "user", "content": prompt}]
+            if not (jd_text or st.session_state.get("jd_text")) or not (resume_text or st.session_state.get("rs_text")):
+                st.warning("Please provide both a JD and a resume (upload or paste).")
+            else:
+                job_desc = jd_text or st.session_state.get("jd_text", "")
+                resume_input = resume_text or st.session_state.get("rs_text", "")
+                prompt = (
+                    "Analyze how well this resume fits the job description. Identify strengths, clear gaps, "
+                    "and 3–5 concrete action steps the candidate should take next. Return a short, scannable output.\n\n"
+                    f"Job Description:\n{job_desc}\n\nResume:\n{resume_input}"
                 )
-                analysis = response.choices[0].message.content
-                st.text_area("Fit Analysis", analysis, height=300)
-            except Exception as e:
-                st.error(f"Error: {e}")
-
-    # --- PAGE: Prompt Lab ---
-    elif page == "Prompt Lab":
-        from prompt_lab import prompt_lab_ui
-        prompt_lab_ui()
+                try:
+                    response = openai.chat.completions.create(
+                        model="gpt-4",
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    analysis = response.choices[0].message.content
+                    st.text_area("Fit Analysis", analysis, height=380)
+                except Exception as e:
+                    # Friendly errors until billing is on
+                    st.error("Couldn’t call OpenAI (likely quota/billing). Once billing is enabled, try again.")
+                    st.caption(f"(Debug: {e})")
+    
+    
+        # --- PAGE: Prompt Lab ---
+        elif page == "Prompt Lab":
+            from prompt_lab import prompt_lab_ui
+            prompt_lab_ui()
         
 
     # --- PAGE: Admin Dashboard ---
     elif page == "Admin Dashboard":
         st.subheader("📊 Admin Dashboard")
     
-        c1, c2 = st.columns([1.4, 1])  # wider table, narrower chart
+        c1, c2 = st.columns([1.4, 1])  # wider table, smaller chart
         with c1:
             df = pd.DataFrame.from_dict(user_data, orient="index")
             st.dataframe(df, use_container_width=True)
     
         with c2:
             try:
-                bar_counts = df[["summaries", "resumes", "questions"]].sum()
+                bar_counts = df[["summaries", "resumes", "questions"]].sum(numeric_only=True)
                 fig, ax = plt.subplots(figsize=(4.5, 3))
                 bar_counts.plot(kind="bar", ax=ax, color="#2E86C1")
                 ax.set_title("Usage Summary", fontsize=12)
@@ -181,21 +240,121 @@ if auth_status:
         new_name = st.text_input("Full Name")
         new_pass = st.text_input("Password", type="password")
         if st.button("Register"):
-            user_data[new_user] = {
-                "name": new_name, "password": new_pass, "summaries": 0, "resumes": 0, "questions": 0
-            }
-            save_users(user_data)
-            st.success("User registered.")
+            if not new_user or not new_pass:
+                st.error("Username and password are required.")
+            elif user_exists(new_user):
+                st.error("User already exists.")
+            else:
+                user_data[new_user] = {
+                    "name": new_name or new_user,
+                    "password": new_pass,
+                    "summaries": 0, "resumes": 0, "questions": 0,
+                    "meta": {"reset_token": "", "reset_issued_at": ""}
+                }
+                save_users(user_data)
+                st.success("User registered.")
+
+     # ---- Password & reset helpers ----
+    import secrets
+    from datetime import datetime
+    
+    def user_exists(username: str) -> bool:
+        return isinstance(user_data, dict) and username in user_data
+    
+    def create_reset_token(username: str):
+        """Create and store a one-time reset token for a user."""
+        if not user_exists(username):
+            return False, "No such user."
+        token = secrets.token_urlsafe(12)
+        user_data[username].setdefault("meta", {})
+        user_data[username]["meta"]["reset_token"] = token
+        user_data[username]["meta"]["reset_issued_at"] = datetime.utcnow().isoformat() + "Z"
+        save_users(user_data)
+        return True, token
+    
+    def reset_password_with_token(username: str, token: str, new_password: str):
+        """Verify token and set a new password. Clears token after use."""
+        if not user_exists(username):
+            return False, "No such user."
+        meta = user_data[username].get("meta", {})
+        stored = meta.get("reset_token", "")
+        if not stored:
+            return False, "No reset token exists for this user."
+        if token.strip() != stored:
+            return False, "Invalid token."
+    
+        # Set new password (we store plaintext in JSON; stauth re-hashes on load)
+        user_data[username]["password"] = new_password
+        # Clear token
+        user_data[username]["meta"]["reset_token"] = ""
+        save_users(user_data)
+        return True, "Password reset successful."
+    
+    def change_password_direct(username: str, old_password: str, new_password: str):
+        """Validate old password and update to new password."""
+        if not user_exists(username):
+            return False, "No such user."
+        current = user_data[username].get("password", "")
+        if old_password != current:
+            return False, "Old password is incorrect."
+        user_data[username]["password"] = new_password
+        save_users(user_data)
+        return True, "Password changed."
 
     # --- PAGE: Change Password ---
     elif page == "Change Password":
-        st.subheader("Change Password")
-        st.warning("Not yet implemented.")
+        st.subheader("🔑 Change Password")
+        if not auth_status:
+            st.info("Please log in to change your password.")
+        else:
+            old_pw = st.text_input("Old Password", type="password")
+            new_pw = st.text_input("New Password", type="password")
+            confirm = st.text_input("Confirm New Password", type="password")
+    
+            if st.button("Update Password"):
+                if not new_pw or new_pw != confirm:
+                    st.error("New passwords do not match.")
+                else:
+                    ok, msg = change_password_direct(username, old_pw, new_pw)
+                    st.success(msg) if ok else st.error(msg)
 
-    # --- PAGE: Reset Password ---
-    elif page == "Reset Password":
-        st.subheader("Reset Password")
-        st.warning("Not yet implemented.")
+
+   # --- PAGE: Reset Password ---
+elif page == "Reset Password":
+    st.subheader("🔒 Password Reset (Token-based)")
+    tabs = st.tabs(["Request Token", "Reset With Token"])
+
+    # Tab 1: Request token
+    with tabs[0]:
+        st.write("Enter the username to generate a one-time reset token. In this offline build, the token will be shown on-screen.")
+        uname = st.text_input("Username for reset", key="rt_user")
+        if st.button("Create Reset Token"):
+            if not uname:
+                st.error("Please enter a username.")
+            else:
+                ok, token_or_msg = create_reset_token(uname)
+                if ok:
+                    st.success("Reset token created. Copy it now (no email yet in offline mode):")
+                    st.code(token_or_msg, language=None)
+                else:
+                    st.error(token_or_msg)
+
+    # Tab 2: Reset with token
+    with tabs[1]:
+        uname2 = st.text_input("Username", key="rt_user2")
+        token = st.text_input("Reset Token", key="rt_token")
+        new_pw2 = st.text_input("New Password", type="password", key="rt_pw")
+        confirm2 = st.text_input("Confirm New Password", type="password", key="rt_pw2")
+
+        if st.button("Reset Password"):
+            if not (uname2 and token and new_pw2):
+                st.error("Please fill in all fields.")
+            elif new_pw2 != confirm2:
+                st.error("New passwords do not match.")
+            else:
+                ok, msg = reset_password_with_token(uname2, token, new_pw2)
+                st.success(msg) if ok else st.error(msg)
+
 
     # --- PAGE: About ---
     elif page == "About":
