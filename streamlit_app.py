@@ -192,7 +192,7 @@ SOFT_SKILLS = {
 }
 
 def normalize(text:str) -> str:
-    return re.sub(r"\s+"," ", (text or "").lower()).strip()
+    return re.sub(r"\\s+"," ", (text or "").lower()).strip()
 
 def extract_keywords(text:str) -> List[str]:
     t = normalize(text)
@@ -243,7 +243,7 @@ def extract_text_pdf(uploaded_file) -> str:
     if not PdfReader: return ""
     try:
         reader = PdfReader(uploaded_file)
-        return "\n".join([(p.extract_text() or "") for p in reader.pages])
+        return "\\n".join([(p.extract_text() or "") for p in reader.pages])
     except Exception:
         return ""
 
@@ -251,7 +251,7 @@ def extract_text_docx(uploaded_file) -> str:
     if not DocxDocument: return ""
     try:
         doc = DocxDocument(uploaded_file)
-        return "\n".join([p.text for p in doc.paragraphs])
+        return "\\n".join([p.text for p in doc.paragraphs])
     except Exception:
         return ""
 
@@ -274,7 +274,7 @@ def export_pdf(text: str) -> bytes:
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=12)
     pdf.set_font("Arial", size=12)
-    for line in text.split("\n"):
+    for line in text.split("\\n"):
         pdf.multi_cell(0, 8, line)
     return pdf.output(dest="S").encode("latin-1")
 
@@ -283,7 +283,7 @@ def export_docx(text: str) -> bytes:
         return text.encode("utf-8")
     buf = io.BytesIO()
     doc = DocxDocument()
-    for line in text.split("\n"):
+    for line in text.split("\\n"):
         doc.add_paragraph(line)
     doc.save(buf)
     buf.seek(0)
@@ -294,7 +294,7 @@ def summary_offline(full_name:str, role:str, experience:str, skills:str) -> str:
     exp_kw = extract_keywords(experience)
     skill_kw = extract_keywords(skills)
     highlights = list(dict.fromkeys(exp_kw + skill_kw))[:10]
-    bullets = "\n".join([f"- Experience with **{kw}**" for kw in highlights]) if highlights else "- Strong fundamentals and rapid learning"
+    bullets = "\\n".join([f"- Experience with **{kw}**" for kw in highlights]) if highlights else "- Strong fundamentals and rapid learning"
     return f"""**{full_name or 'Candidate'}** — {role or 'Target Role'}
 
 Collaborative professional delivering reliable solutions in fast-paced environments, translating requirements into measurable outcomes.
@@ -327,7 +327,7 @@ def questions_offline(text:str, qtype:str, count:int) -> List[str]:
 # ---------------- GPT helpers (only used when USE_GPT=True) ----------------
 def gpt_chat(prompt: str) -> str:
     if not (USE_GPT and client):
-        return f"(Offline mock)\n\n{prompt[:300]}\n\n— This would be replaced by GPT output when you enable billing."
+        return f"(Offline mock)\\n\\n{prompt[:300]}\\n\\n— This would be replaced by GPT output when you enable billing."
     try:
         resp = client.chat.completions.create(
             model=OPENAI_MODEL,
@@ -364,9 +364,9 @@ Tone: {tone}. Provide 2–4 bullets per category (if relevant) with tech + resul
 PROMPT_TONES = ["Neutral", "Confident", "Executive", "Friendly", "Direct", "Data-driven"]
 
 # ---------------- JD parsing & weighting helpers ----------------
-RE_REQUIRED = re.compile(r"(must[-\s]?have|required|requirements|we require|you must)", re.I)
-RE_NICE     = re.compile(r"(nice[-\s]?to[-\s]?have|preferred|bonus|plus)", re.I)
-RE_YEARS    = re.compile(r"(\d+)\+?\s+(years|yrs)", re.I)
+RE_REQUIRED = re.compile(r"(must[-\\s]?have|required|requirements|we require|you must)", re.I)
+RE_NICE     = re.compile(r"(nice[-\\s]?to[-\\s]?have|preferred|bonus|plus)", re.I)
+RE_YEARS    = re.compile(r"(\\d+)\\+?\\s+(years|yrs)", re.I)
 SENIOR_SIGNALS = {
     "senior","lead","principal","staff","manager","management","architect","strategy","roadmap","mentoring","mentorship"
 }
@@ -403,8 +403,8 @@ def split_required_vs_nice(jd_text: str) -> tuple[set, set]:
             required_block.append(ln)
         elif current == "nice":
             preferred_block.append(ln)
-    req_keys = set(extract_keywords("\n".join(required_block)))
-    nice_keys = set(extract_keywords("\n".join(preferred_block)))
+    req_keys = set(extract_keywords("\\n".join(required_block)))
+    nice_keys = set(extract_keywords("\\n".join(preferred_block)))
     if not req_keys:
         req_keys = set(extract_keywords(jd_text))
     return req_keys, nice_keys
@@ -500,7 +500,7 @@ def page_generate_summary():
             if USE_GPT and client:
                 out = gpt_chat(prompt)
             else:
-                out = f"(Offline mock)\n\nTemplate: {tpl2}\nTone: {tone2}\n\n" + summary_offline(
+                out = f"(Offline mock)\\n\\nTemplate: {tpl2}\\nTone: {tone2}\\n\\n" + summary_offline(
                     full_name=full_name or "Candidate", role=role, experience=experience, skills=skills
                 )
             st.success("Template output:")
@@ -520,9 +520,9 @@ def page_upload_resume():
     use_gpt = st.checkbox("Use GPT (if enabled)", value=False and USE_GPT)
     if st.button("Generate Questions"):
         if use_gpt and USE_GPT and client:
-            prompt = f"Generate {count} {qtype} interview questions tailored to the following resume content:\n{text}"
+            prompt = f"Generate {count} {qtype} interview questions tailored to the following resume content:\\n{text}"
             out = gpt_chat(prompt)
-            qs = [x.strip("- ").strip() for x in out.split("\n") if x.strip()][:count]
+            qs = [x.strip("- ").strip() for x in out.split("\\n") if x.strip()][:count]
         else:
             qs = questions_offline(text, qtype, count)
 
@@ -535,7 +535,7 @@ def page_upload_resume():
         save_db(DB)
         st.session_state.metrics = DB["metrics"]
 
-        dl = "\n".join([f"{i}. {q}" for i, q in enumerate(qs, 1)])
+        dl = "\\n".join([f"{i}. {q}" for i, q in enumerate(qs, 1)])
         st.download_button("Download Questions (.txt)", dl.encode("utf-8"), file_name="interview_questions.txt")
 
 def page_prompt_lab():
@@ -560,7 +560,7 @@ def page_prompt_lab():
         if use_gpt and USE_GPT and client:
             out = gpt_chat(prompt)
         else:
-            out = f"(Offline mock)\n\nTemplate: {tpl}\nTone: {tone}\n\n" + summary_offline(
+            out = f"(Offline mock)\\n\\nTemplate: {tpl}\\nTone: {tone}\\n\\n" + summary_offline(
                 full_name="Candidate", role=role, experience=experience, skills=skills
             )
 
@@ -598,6 +598,78 @@ def page_job_fit_salary():
         if not jd_text.strip() or not resume_text.strip():
             st.error("Please provide both a JD and resume (upload or paste).")
             return
+
+        # JD parsing helpers (inline to avoid missing imports up top)
+        RE_REQUIRED = re.compile(r"(must[-\\s]?have|required|requirements|we require|you must)", re.I)
+        RE_NICE     = re.compile(r"(nice[-\\s]?to[-\\s]?have|preferred|bonus|plus)", re.I)
+        RE_YEARS    = re.compile(r"(\\d+)\\+?\\s+(years|yrs)", re.I)
+        SENIOR_SIGNALS = {"senior","lead","principal","staff","manager","management","architect","strategy","roadmap","mentoring","mentorship"}
+        JUNIOR_SIGNALS = {"junior","assoc","associate","entry","new grad","intern"}
+
+        def infer_seniority(text: str) -> str:
+            t = normalize(text)
+            has_senior = any(s in t for s in SENIOR_SIGNALS)
+            has_junior = any(j in t for j in JUNIOR_SIGNALS)
+            if has_senior and not has_junior:
+                return "Senior+"
+            if has_junior and not has_senior:
+                return "Junior/Associate"
+            return "Mid-level"
+
+        def extract_years_required(text: str) -> int:
+            yrs = 0
+            for m in RE_YEARS.finditer(text):
+                try:
+                    yrs = max(yrs, int(m.group(1)))
+                except Exception:
+                    pass
+            return yrs
+
+        def split_required_vs_nice(jd_text: str) -> tuple[set, set]:
+            lines = [l.strip() for l in jd_text.splitlines() if l.strip()]
+            required_block, preferred_block, current = [], [], None
+            for ln in lines:
+                if RE_REQUIRED.search(ln):
+                    current = "req"; continue
+                if RE_NICE.search(ln):
+                    current = "nice"; continue
+                if current == "req":
+                    required_block.append(ln)
+                elif current == "nice":
+                    preferred_block.append(ln)
+            req_keys = set(extract_keywords("\\n".join(required_block)))
+            nice_keys = set(extract_keywords("\\n".join(preferred_block)))
+            if not req_keys:
+                req_keys = set(extract_keywords(jd_text))
+            return req_keys, nice_keys
+
+        def weighted_fit_score(resume_keys: set, req_keys: set, nice_keys: set) -> tuple[float, dict]:
+            req_tech, req_soft = req_keys & TECH_KEYWORDS, req_keys & SOFT_SKILLS
+            nice_tech, nice_soft = nice_keys & TECH_KEYWORDS, nice_keys & SOFT_SKILLS
+
+            have_req_tech  = resume_keys & req_tech
+            have_req_soft  = resume_keys & req_soft
+            have_nice_tech = resume_keys & nice_tech
+            have_nice_soft = resume_keys & nice_soft
+
+            w_req_tech, w_req_soft, w_nice_tech, w_nice_soft = 45, 25, 20, 10
+            sc_req_tech  = (len(have_req_tech)  / max(1, len(req_tech)))  * w_req_tech
+            sc_req_soft  = (len(have_req_soft)  / max(1, len(req_soft)))  * w_req_soft
+            sc_nice_tech = (len(have_nice_tech) / max(1, len(nice_tech))) * w_nice_tech
+            sc_nice_soft = (len(have_nice_soft) / max(1, len(nice_soft))) * w_nice_soft
+
+            score = round(min(100.0, sc_req_tech + sc_req_soft + sc_nice_tech + sc_nice_soft), 1)
+            details = {
+                "have_req_tech": sorted(have_req_tech),
+                "miss_req_tech": sorted(req_tech - resume_keys),
+                "have_req_soft": sorted(have_req_soft),
+                "miss_req_soft": sorted(req_soft - resume_keys),
+                "have_nice_tech": sorted(have_nice_tech),
+                "miss_nice_tech": sorted(nice_tech - resume_keys),
+                "have_nice_soft": sorted(have_nice_soft),
+                "miss_nice_soft": sorted(nice_soft - resume_keys),
+            }
+            return score, details
 
         jd_seniority = infer_seniority(jd_text)
         years_req = extract_years_required(jd_text)
@@ -649,23 +721,23 @@ def page_job_fit_salary():
             st.markdown(f"- {r}")
 
         report = (
-            f"ResumeReadyPro — Job Fit & Salary Alignment Report (Weighted)\n"
-            f"Generated: {datetime.utcnow().isoformat()}Z\n\n"
-            f"Role: {role or '(unspecified)'}  |  Location: {location_level}\n"
-            f"Expected salary: ${int(expected_salary):,}\n"
-            f"JD Seniority: {jd_seniority}  |  Years indicated: {years_req or 'n/a'}\n"
-            f"Weighted Fit Score: {fit_score}%\n\n"
-            f"Required (have): {', '.join(detail['have_req_tech'] + detail['have_req_soft']) or '—'}\n"
-            f"Required (missing): {', '.join(detail['miss_req_tech'] + detail['miss_req_soft']) or '—'}\n"
-            f"Nice-to-have (have): {', '.join(detail['have_nice_tech'] + detail['have_nice_soft']) or '—'}\n"
-            f"Nice-to-have (missing): {', '.join(detail['miss_nice_tech'] + detail['miss_nice_soft']) or '—'}\n\n"
+            f"ResumeReadyPro — Job Fit & Salary Alignment Report (Weighted)\\n"
+            f"Generated: {datetime.utcnow().isoformat()}Z\\n\\n"
+            f"Role: {role or '(unspecified)'}  |  Location: {location_level}\\n"
+            f"Expected salary: ${int(expected_salary):,}\\n"
+            f"JD Seniority: {jd_seniority}  |  Years indicated: {years_req or 'n/a'}\\n"
+            f"Weighted Fit Score: {fit_score}%\\n\\n"
+            f"Required (have): {', '.join(detail['have_req_tech'] + detail['have_req_soft']) or '—'}\\n"
+            f"Required (missing): {', '.join(detail['miss_req_tech'] + detail['miss_req_soft']) or '—'}\\n"
+            f"Nice-to-have (have): {', '.join(detail['have_nice_tech'] + detail['have_nice_soft']) or '—'}\\n"
+            f"Nice-to-have (missing): {', '.join(detail['miss_nice_tech'] + detail['miss_nice_soft']) or '—'}\\n\\n"
         )
         if band:
             report += (
-                f"Market Band: ${s['band_low']:,}–${s['band_high']:,} (mid ${s['band_mid']:,})\n"
-                f"Salary Alignment: {s['status']}\n{s['note']}\n\n"
+                f"Market Band: ${s['band_low']:,}–${s['band_high']:,} (mid ${s['band_mid']:,})\\n"
+                f"Salary Alignment: {s['status']}\\n{s['note']}\\n\\n"
             )
-        report += "Recommendations:\n" + "\n".join([f"- {x}" for x in recs])
+        report += "Recommendations:\\n" + "\\n".join([f"- {x}" for x in recs])
 
         st.download_button("⬇️ Download Report (.txt)", report.encode("utf-8"),
                            file_name="job_fit_salary_report.txt", mime="text/plain")
