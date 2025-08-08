@@ -302,7 +302,7 @@ if auth_status:
         return True, "Password changed."
 
     # --- PAGE: Change Password ---
-    elif page == "Change Password":
+elif page == "Change Password":
         st.subheader("🔑 Change Password")
         if not auth_status:
             st.info("Please log in to change your password.")
@@ -316,7 +316,7 @@ if auth_status:
                     st.error("New passwords do not match.")
                 else:
                     ok, msg = change_password_direct(username, old_pw, new_pw)
-                    st.success(msg) if ok else st.error(msg)
+                    st.success(msg) if ok else st.error(msg)    
 
 
    # --- PAGE: Reset Password ---
