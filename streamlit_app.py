@@ -212,25 +212,48 @@ if auth_status:
 
     # --- PAGE: Admin Dashboard ---
     elif page == "Admin Dashboard":
-        st.subheader("📊 Admin Dashboard")
-    
-        c1, c2 = st.columns([1.4, 1])  # wider table, smaller chart
-        with c1:
-            df = pd.DataFrame.from_dict(user_data, orient="index")
-            st.dataframe(df, use_container_width=True)
-    
-        with c2:
-            try:
-                bar_counts = df[["summaries", "resumes", "questions"]].sum(numeric_only=True)
-                fig, ax = plt.subplots(figsize=(4.5, 3))
-                bar_counts.plot(kind="bar", ax=ax, color="#2E86C1")
-                ax.set_title("Usage Summary", fontsize=12)
-                ax.tick_params(axis="x", labelrotation=0)
-                ax.bar_label(ax.containers[0], label_type='edge', fontsize=9)
-                fig.tight_layout()
-                st.pyplot(fig)
-            except Exception as e:
-                st.info(f"Chart unavailable: {e}")
+    st.subheader("📊 Admin Dashboard")
+
+    # Keep only real user rows (skip any meta/system dicts)
+    real_users = {
+        u: d for u, d in user_data.items()
+        if isinstance(d, dict) and ("summaries" in d or "resumes" in d or "questions" in d or "gap_analyses" in d)
+    }
+
+    # Build DataFrame
+    df = pd.DataFrame.from_dict(real_users, orient="index")
+
+    # Ensure the columns exist and are numeric; show 0 instead of NaN/None
+    for col in ["summaries", "resumes", "questions", "gap_analyses"]:
+        if col not in df.columns:
+            df[col] = 0
+    df[["summaries", "resumes", "questions", "gap_analyses"]] = (
+        df[["summaries", "resumes", "questions", "gap_analyses"]]
+        .apply(pd.to_numeric, errors="coerce")
+        .fillna(0)
+        .astype(int)
+    )
+
+    c1, c2 = st.columns([1.4, 1])  # wider table, smaller chart
+
+    with c1:
+        st.dataframe(
+            df[["summaries", "resumes", "questions", "gap_analyses"]],
+            use_container_width=True
+        )
+
+    with c2:
+        try:
+            totals = df[["summaries", "resumes", "questions", "gap_analyses"]].sum(numeric_only=True)
+            fig, ax = plt.subplots(figsize=(4.8, 3.2))
+            totals.plot(kind="bar", ax=ax, color="#2E86C1")
+            ax.set_title("Usage Summary", fontsize=12)
+            ax.tick_params(axis="x", labelrotation=0)
+            ax.bar_label(ax.containers[0], label_type="edge", fontsize=9)
+            fig.tight_layout()
+            st.pyplot(fig)
+        except Exception as e:
+            st.info(f"Chart unavailable: {e}")
 
 
     # --- PAGE: Register User ---
