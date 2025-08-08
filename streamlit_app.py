@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from fpdf import FPDF
 from PIL import Image
 from docx import Document
+from prompt_lab import prompt_lab_ui
 
 # Load environment variables
 load_dotenv()
@@ -146,12 +147,13 @@ if auth_status:
 
     # --- PAGE: Prompt Lab ---
     elif page == "Prompt Lab":
-        st.subheader("🧪 Prompt Lab")
-        user_prompt = st.text_area("Custom Prompt")
+    from prompt_lab import prompt_lab_ui
+    prompt_lab_ui()
+
         if st.button("Run"):
             try:
                 response = openai.chat.completions.create(
-                    model="gpt-4",
+                    model="gpt-3.5-turbo",
                     messages=[{"role": "user", "content": user_prompt}]
                 )
                 output = response.choices[0].message.content
